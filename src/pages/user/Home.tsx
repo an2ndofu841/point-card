@@ -16,18 +16,14 @@ export const UserHome = () => {
   const userProfile = useLiveQuery(() => userId ? db.userCache.get(userId) : undefined, [userId]);
   const userName = userProfile?.name || 'ゲストさん';
 
-  // Fetch All Groups User Belongs To
-  const myMemberships = useLiveQuery(() => 
-    userId ? db.userMemberships.where('userId').equals(userId).toArray() : []
-  , [userId]);
-  const myGroupIds = myMemberships?.map(m => m.groupId) || [];
-  
-  // Fetch only joined groups
-  const groups = useLiveQuery(() => 
-    myGroupIds.length > 0 
-      ? db.groups.where('id').anyOf(myGroupIds).toArray()
-      : []
-  , [myGroupIds]);
+  // Fetch All Groups User Belongs To (Combined query to avoid render loops)
+  const groups = useLiveQuery(async () => {
+    if (!userId) return [];
+    const memberships = await db.userMemberships.where('userId').equals(userId).toArray();
+    if (!memberships.length) return [];
+    const groupIds = memberships.map(m => m.groupId);
+    return await db.groups.where('id').anyOf(groupIds).toArray();
+  }, [userId]);
 
   // Determine active group (default to first joined, or null if none)
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
