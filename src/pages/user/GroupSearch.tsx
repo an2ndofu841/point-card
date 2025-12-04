@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, QrCode, Loader2, Users, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { Html5QrcodeScanner } from 'html5-qrcode';
-import { IdolGroup } from '../../lib/db';
+import type { IdolGroup } from '../../lib/db';
 
 export const GroupSearch = () => {
   const navigate = useNavigate();
