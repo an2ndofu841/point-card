@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, isMock } from '../lib/supabase';
+import { supabase, isMock } from '../../lib/supabase';
 import { Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle, ArrowLeft, CheckCircle, Shield } from 'lucide-react';
 
