@@ -58,7 +58,7 @@ export const Landing = () => {
         </div>
 
         <div className="mt-auto pt-10 pb-4 text-center">
-          <Link to="/admin/dashboard" className="text-xs text-gray-400 hover:text-primary transition font-medium">
+          <Link to="/admin/login" className="text-xs text-gray-400 hover:text-primary transition font-medium">
             運営者ログインはこちら
           </Link>
         </div>

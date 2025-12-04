@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { supabase, isMock } from '../../lib/supabase';
 import { QrCode, RefreshCw, Gift, AlertTriangle, LogOut, Crown, Palette, Users, ChevronDown } from 'lucide-react';
 
 export const AdminDashboard = () => {
+  const navigate = useNavigate();
+  
   // Group Selection Logic
   const groups = useLiveQuery(() => db.groups.toArray());
   const [selectedGroupId, setSelectedGroupId] = useState<number>(() => {
@@ -29,6 +32,17 @@ export const AdminDashboard = () => {
   
   const count = pendingCount ?? 0;
 
+  const handleLogout = async () => {
+      if (window.confirm('ログアウトしますか？')) {
+          if (isMock) {
+              localStorage.removeItem('mock_admin_session');
+          } else {
+              await supabase.auth.signOut();
+          }
+          navigate('/admin/login');
+      }
+  };
+
   return (
     <div className="min-h-screen bg-bg-main text-text-main pb-20">
       {/* Header */}
@@ -52,9 +66,12 @@ export const AdminDashboard = () => {
             </div>
           </div>
           <div className="flex gap-2">
-             <Link to="/" className="p-2 rounded-full hover:bg-red-50 transition text-gray-400 hover:text-red-500">
+             <button 
+               onClick={handleLogout}
+               className="p-2 rounded-full hover:bg-red-50 transition text-gray-400 hover:text-red-500"
+             >
                <LogOut size={20} />
-             </Link>
+             </button>
           </div>
         </div>
 
