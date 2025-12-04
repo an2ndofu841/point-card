@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type IdolGroup } from '../../lib/db';
-import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2 } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const GroupManagement = () => {
   const groups = useLiveQuery(() => db.groups.toArray());
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Form Data
   const [formData, setFormData] = useState<Partial<IdolGroup>>({
@@ -20,24 +22,38 @@ export const GroupManagement = () => {
 
   const handleSave = async () => {
     if (!formData.name) return;
+    setIsSaving(true);
 
     try {
-      // Generate ID: find max existing ID + 1
-      const maxId = await db.groups.orderBy('id').last().then(g => g?.id || 0);
-      const newId = maxId + 1;
+      // 1. Save to Supabase first to get ID
+      const { data, error } = await supabase
+        .from('groups')
+        .insert({
+            name: formData.name,
+            theme_color: formData.themeColor || '#2563EB',
+            logo_url: formData.logoUrl
+        })
+        .select()
+        .single();
 
+      if (error) throw error;
+      if (!data) throw new Error('No data returned from Supabase');
+
+      // 2. Save to Local DB with returned ID
       await db.groups.add({
-        id: newId,
-        name: formData.name,
-        themeColor: formData.themeColor!,
-        logoUrl: formData.logoUrl
+        id: data.id,
+        name: data.name,
+        themeColor: data.theme_color,
+        logoUrl: data.logo_url
       });
 
       setIsEditing(false);
       setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
     } catch (err) {
       console.error("Failed to save group", err);
-      alert("保存に失敗しました");
+      alert("保存に失敗しました。インターネット接続を確認してください。");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -130,9 +146,10 @@ export const GroupManagement = () => {
             </button>
             <button 
               onClick={handleSave}
-              className="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition flex items-center justify-center gap-2"
+              disabled={isSaving}
+              className="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save size={18} /> 保存する
+              {isSaving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> 保存する</>}
             </button>
           </div>
         </div>
