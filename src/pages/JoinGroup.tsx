@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
-import { supabase } from '../lib/supabase';
+import { supabase, isMock } from '../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const JoinGroup = () => {
@@ -33,29 +33,43 @@ export const JoinGroup = () => {
         // 1. Check if group exists locally
         let group = await db.groups.get(gId);
 
-        // 2. If not local, fetch from Supabase
+        // 2. If not local, fetch from Supabase (or Mock logic)
         if (!group) {
-            const { data, error } = await supabase
-                .from('groups')
-                .select('*')
-                .eq('id', gId)
-                .single();
-            
-            if (error || !data) {
-                console.error("Group fetch error:", error);
-                setStatus('error');
-                setMessage('グループが見つかりませんでした');
-                return;
-            }
+            // Mock Logic for testing without Supabase data
+            if (isMock && gId > 1) {
+               // Simulate finding a group in mock mode
+               await new Promise(resolve => setTimeout(resolve, 800));
+               group = {
+                   id: gId,
+                   name: `Mock Group ${gId}`,
+                   themeColor: '#8B5CF6', // Purple default for mocks
+                   logoUrl: undefined
+               };
+               await db.groups.add(group);
+            } else {
+                // Real Supabase Fetch
+                const { data, error } = await supabase
+                    .from('groups')
+                    .select('*')
+                    .eq('id', gId)
+                    .single();
+                
+                if (error || !data) {
+                    console.error("Group fetch error:", error);
+                    setStatus('error');
+                    setMessage('グループが見つかりませんでした');
+                    return;
+                }
 
-            // Add to local DB
-            group = {
-                id: data.id,
-                name: data.name,
-                themeColor: data.theme_color,
-                logoUrl: data.logo_url || undefined
-            };
-            await db.groups.add(group);
+                // Add to local DB
+                group = {
+                    id: data.id,
+                    name: data.name,
+                    themeColor: data.theme_color,
+                    logoUrl: data.logo_url || undefined
+                };
+                await db.groups.add(group);
+            }
         }
 
         // 3. Check if already a member
