@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Save, User, Loader2 } from 'lucide-react';
 
 export const ProfileEdit = () => {
   const navigate = useNavigate();
-  const userId = 'user-sample-123'; // Mock ID
+  const { userId } = useCurrentUser(); // Use real userId
   
   // Fetch user data
-  const userCache = useLiveQuery(() => db.userCache.get(userId));
+  const userCache = useLiveQuery(() => userId ? db.userCache.get(userId) : undefined, [userId]);
   
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,13 +24,24 @@ export const ProfileEdit = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
+    
     setLoading(true);
 
     try {
-      await db.userCache.update(userId, {
-        name: name,
-        lastUpdated: Date.now()
-      });
+      const exists = await db.userCache.get(userId);
+      if (exists) {
+        await db.userCache.update(userId, {
+          name: name,
+          lastUpdated: Date.now()
+        });
+      } else {
+        await db.userCache.put({
+          id: userId,
+          name: name,
+          lastUpdated: Date.now()
+        });
+      }
       
       // In a real app, you would also sync this to Supabase here
       

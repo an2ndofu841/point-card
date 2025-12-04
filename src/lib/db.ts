@@ -135,8 +135,9 @@ db.version(7).stores({
   userCache: 'id'
 });
 
-// Version 8: Multi-Group Support
+// Version 8: Multi-Group Support (Fixed: Retain userCache)
 db.version(8).stores({
+  userCache: 'id', // Retain for global profile (name, etc.)
   groups: 'id', // manual id
   userMemberships: '++id, [userId+groupId], userId, groupId',
   pendingScans: '++id, userId, groupId, timestamp, synced',

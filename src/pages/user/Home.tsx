@@ -5,18 +5,21 @@ import { usePWAInstall } from '../../hooks/usePWAInstall';
 import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
   const [qrValue, setQrValue] = useState('');
-  const [userId] = useState('user-sample-123'); // Mock ID
+  const { userId } = useCurrentUser(); // Use real userId
   
   // Fetch User Profile
-  const userProfile = useLiveQuery(() => db.userCache.get(userId));
+  const userProfile = useLiveQuery(() => userId ? db.userCache.get(userId) : undefined, [userId]);
   const userName = userProfile?.name || 'ゲストさん';
 
   // Fetch All Groups User Belongs To
-  const myMemberships = useLiveQuery(() => db.userMemberships.where('userId').equals(userId).toArray(), [userId]);
+  const myMemberships = useLiveQuery(() => 
+    userId ? db.userMemberships.where('userId').equals(userId).toArray() : []
+  , [userId]);
   const myGroupIds = myMemberships?.map(m => m.groupId) || [];
   
   // Fetch only joined groups
@@ -40,7 +43,7 @@ export const UserHome = () => {
 
   // Fetch Membership for Active Group
   const membership = useLiveQuery(() => 
-    activeGroupId ? db.userMemberships.where({ userId: userId, groupId: activeGroupId }).first() : undefined
+    (userId && activeGroupId) ? db.userMemberships.where({ userId: userId, groupId: activeGroupId }).first() : undefined
   , [userId, activeGroupId]);
 
   const userPoints = membership?.points ?? 0;
@@ -64,6 +67,7 @@ export const UserHome = () => {
 
   useEffect(() => {
     // Generate static QR code on mount (Identity only)
+    if (!userId) return;
     const payload = {
       id: userId,
       ts: Date.now()

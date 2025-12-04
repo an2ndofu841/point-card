@@ -1,23 +1,43 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Check, Lock } from 'lucide-react';
+import { useEffect } from 'react';
 
 export const UserDesigns = () => {
-  const userId = 'user-sample-123'; // Mock ID
-  
-  // Fetch user cache to get currently selected design
-  const userCache = useLiveQuery(() => db.userCache.get(userId));
-  const selectedDesignId = userCache?.selectedDesignId;
+  const { userId } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const groupId = location.state?.groupId as number | undefined;
 
-  // Fetch all available designs
-  const allDesigns = useLiveQuery(() => db.cardDesigns.toArray());
+  // Redirect if no group context
+  useEffect(() => {
+    if (!groupId) {
+        navigate('/home');
+    }
+  }, [groupId, navigate]);
+
+  // Fetch user membership for current group
+  const membership = useLiveQuery(() => 
+    (userId && groupId) ? db.userMemberships.where({ userId, groupId }).first() : undefined
+  , [userId, groupId]);
+
+  const selectedDesignId = membership?.selectedDesignId;
+
+  // Fetch all available designs for this group
+  const allDesigns = useLiveQuery(() => 
+    groupId ? db.cardDesigns.where('groupId').equals(groupId).toArray() : []
+  , [groupId]);
   
-  // Fetch user owned designs
-  const userDesigns = useLiveQuery(() => db.userDesigns.where('userId').equals(userId).toArray());
+  // Fetch user owned designs for this group
+  const userDesigns = useLiveQuery(() => 
+    (userId && groupId) ? db.userDesigns.where({ userId, groupId }).toArray() : []
+  , [userId, groupId]);
   
   const handleSelect = async (designId?: number) => {
-    await db.userCache.update(userId, { selectedDesignId: designId });
+    if (!membership?.id) return;
+    await db.userMemberships.update(membership.id, { selectedDesignId: designId });
   };
 
   // Helper to determine background style properties
