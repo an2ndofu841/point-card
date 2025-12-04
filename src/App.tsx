@@ -8,6 +8,7 @@ import { UserTickets } from './pages/user/Tickets';
 import { UserSettings } from './pages/user/Settings';
 import { UserDesigns } from './pages/user/UserDesigns';
 import { UserHistory } from './pages/user/History'; // Import UserHistory
+import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
 import { AdminDashboard } from './pages/admin/Dashboard';
@@ -36,6 +37,7 @@ function App() {
       <Route path="/user/settings" element={<UserSettings />} />
       <Route path="/user/designs" element={<UserDesigns />} />
       <Route path="/user/history" element={<UserHistory />} /> {/* Added Route */}
+      <Route path="/user/groups/search" element={<GroupSearch />} /> {/* New Route */}
       <Route path="/user/profile" element={<ProfileEdit />} />
       
       {/* Admin Routes */}

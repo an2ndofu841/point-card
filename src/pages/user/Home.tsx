@@ -139,7 +139,7 @@ export const UserHome = () => {
                     </button>
                 ))}
                 {/* Add Group Button */}
-                <Link to="/admin/groups" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold bg-gray-100 text-gray-400 border border-dashed border-gray-300 hover:bg-gray-200 transition whitespace-nowrap">
+                <Link to="/user/groups/search" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold bg-gray-100 text-gray-400 border border-dashed border-gray-300 hover:bg-gray-200 transition whitespace-nowrap">
                     <Users size={14} /> + 追加
                 </Link>
             </div>
@@ -204,7 +204,7 @@ export const UserHome = () => {
                  </div>
                  <p className="font-bold text-sm mb-1">ポイントカードがありません</p>
                  <p className="text-xs text-gray-400 mb-4">新しいグループを追加するか、<br/>QRコードを読み取ってください</p>
-                 <Link to="/admin/groups" className="bg-white text-primary border border-primary font-bold py-2 px-4 rounded-full text-xs shadow-sm hover:bg-blue-50 transition">
+                 <Link to="/user/groups/search" className="bg-white text-primary border border-primary font-bold py-2 px-4 rounded-full text-xs shadow-sm hover:bg-blue-50 transition">
                     グループを探す・追加
                  </Link>
              </div>

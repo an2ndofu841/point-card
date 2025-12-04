@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
+import { supabase } from '../lib/supabase';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const JoinGroup = () => {
@@ -29,15 +30,35 @@ export const JoinGroup = () => {
       // If not logged in, should redirect to /login?redirect=/join/:groupId
       
       try {
-        // Check if group exists
-        const group = await db.groups.get(gId);
+        // 1. Check if group exists locally
+        let group = await db.groups.get(gId);
+
+        // 2. If not local, fetch from Supabase
         if (!group) {
-            setStatus('error');
-            setMessage('グループが見つかりませんでした');
-            return;
+            const { data, error } = await supabase
+                .from('groups')
+                .select('*')
+                .eq('id', gId)
+                .single();
+            
+            if (error || !data) {
+                console.error("Group fetch error:", error);
+                setStatus('error');
+                setMessage('グループが見つかりませんでした');
+                return;
+            }
+
+            // Add to local DB
+            group = {
+                id: data.id,
+                name: data.name,
+                themeColor: data.theme_color,
+                logoUrl: data.logo_url || undefined
+            };
+            await db.groups.add(group);
         }
 
-        // Check if already a member
+        // 3. Check if already a member
         const existing = await db.userMemberships.where({ userId, groupId: gId }).first();
         
         if (existing) {
@@ -47,7 +68,7 @@ export const JoinGroup = () => {
             return;
         }
 
-        // Create membership
+        // 4. Create membership
         await db.userMemberships.add({
             userId,
             groupId: gId,
