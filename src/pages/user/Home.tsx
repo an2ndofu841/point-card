@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import { Download, Star, Trophy, History, Settings, ChevronRight, Smartphone, User, Ticket, Users, ChevronDown } from 'lucide-react';
+import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 

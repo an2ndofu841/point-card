@@ -16,18 +16,8 @@ interface HistoryItem {
 
 export const UserHistory = () => {
   const [userId] = useState('user-sample-123'); // Mock ID
-  const [activeGroupId, setActiveGroupId] = useState<number>(1); // Should sync with Home
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Fetch user's active group context from somewhere if possible, 
-  // or just default to 1 for now, or allow filter. 
-  // Better to allow filter or show all. 
-  // Let's show all but grouped? Or just list all for now.
-  // Ideally we pass `activeGroupId` via location state or context.
-  
-  // For now let's try to match what is in Home. 
-  // But since we don't have global state easily, let's just fetch all for the user.
 
   // Fetch local pending scans (offline data)
   const pendingScans = useLiveQuery(() => 
@@ -131,4 +121,3 @@ export const UserHistory = () => {
     </div>
   );
 };
-

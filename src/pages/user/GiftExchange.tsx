@@ -47,6 +47,7 @@ export const GiftExchange = () => {
       // 2. Add ticket to local DB
       await db.userTickets.add({
         userId: 'user-sample-123', 
+        groupId: 1, // Default to group 1 for now
         giftId: gift.id!,
         giftName: gift.name,
         status: 'UNUSED',
@@ -56,6 +57,7 @@ export const GiftExchange = () => {
       // 3. Add pending transaction for server sync
       await db.pendingScans.add({
         userId: 'user-sample-123',
+        groupId: 1, // Default to group 1 for now
         points: -gift.pointsRequired, // Negative points for usage
         type: 'USE_TICKET', 
         timestamp: Date.now(),
