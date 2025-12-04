@@ -1,8 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/db';
-import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Flashlight, X, Ticket, Palette, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export const Scanner = () => {
@@ -50,7 +50,7 @@ export const Scanner = () => {
              (decodedText) => {
                 handleScan(decodedText);
              },
-             (errorMessage) => {
+             () => {
                // ignore frame errors
              }
            );

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { db } from '../lib/db';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -89,4 +89,3 @@ export const DebugAddGroup = () => {
     </div>
   );
 };
-

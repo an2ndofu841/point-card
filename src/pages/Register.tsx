@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { supabase, isMock } from '../lib/supabase';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 
 export const Register = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

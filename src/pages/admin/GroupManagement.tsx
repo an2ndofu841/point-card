@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type IdolGroup } from '../../lib/db';
-import { ArrowLeft, Plus, Users, ExternalLink, QrCode, Copy, Check, Trash2, Save } from 'lucide-react';
+import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const GroupManagement = () => {
@@ -223,4 +223,3 @@ export const GroupManagement = () => {
     </div>
   );
 };
-

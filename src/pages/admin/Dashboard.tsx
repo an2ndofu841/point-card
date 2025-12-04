@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
-import { QrCode, RefreshCw, Gift, AlertTriangle, Settings, LogOut, Crown, Palette, Users, ChevronDown } from 'lucide-react';
+import { QrCode, RefreshCw, Gift, AlertTriangle, LogOut, Crown, Palette, Users, ChevronDown } from 'lucide-react';
 
 export const AdminDashboard = () => {
   // Group Selection Logic

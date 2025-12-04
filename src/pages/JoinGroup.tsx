@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
@@ -108,4 +108,3 @@ export const JoinGroup = () => {
     </div>
   );
 };
-

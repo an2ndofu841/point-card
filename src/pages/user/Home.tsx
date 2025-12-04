@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
@@ -54,7 +54,10 @@ export const UserHome = () => {
 
   // Fetch Selected Design for Active Group
   const designId = membership?.selectedDesignId;
-  const currentDesign = useLiveQuery(() => designId ? db.cardDesigns.get(designId) : Promise.resolve(undefined), [designId]);
+  const currentDesign = useLiveQuery(async () => {
+    if (!designId) return undefined;
+    return await db.cardDesigns.get(designId);
+  }, [designId]);
 
   useEffect(() => {
     // Generate static QR code on mount (Identity only)

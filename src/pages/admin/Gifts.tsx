@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, X, Image as ImageIcon, Ticket } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket } from 'lucide-react';
 
 export const ManageGifts = () => {
   // Get current admin group context

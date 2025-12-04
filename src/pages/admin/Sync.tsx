@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, CloudUpload, Check, Loader2, Trash2, Database } from 'lucide-react';
+import { ArrowLeft, CloudUpload, Check, Loader2, Database } from 'lucide-react';
 
 export const Sync = () => {
   const pendingScans = useLiveQuery(() => db.pendingScans.filter(s => !s.synced).toArray());

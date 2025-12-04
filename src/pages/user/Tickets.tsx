@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type UserTicket } from '../../lib/db';
-import { ArrowLeft, Ticket, Clock, ChevronRight, CheckCircle, X } from 'lucide-react';
+import { ArrowLeft, Ticket, Clock, ChevronRight, X } from 'lucide-react';
 
 export const UserTickets = () => {
   const tickets = useLiveQuery(() => 
@@ -111,5 +111,3 @@ export const UserTickets = () => {
     </div>
   );
 };
-
-

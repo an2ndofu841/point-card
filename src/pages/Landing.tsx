@@ -1,6 +1,5 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowRight, Star, Smartphone } from 'lucide-react';
+import { Mail, ArrowRight, Smartphone } from 'lucide-react';
 
 export const Landing = () => {
   return (
