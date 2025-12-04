@@ -48,7 +48,7 @@ export const UserHome = () => {
 
   // Fetch Rank Configs for Active Group
   const ranks = useLiveQuery(() => 
-    activeGroupId ? db.rankConfigs.where('groupId').equals(activeGroupId).sortBy('minPoints') : undefined
+    activeGroupId ? db.rankConfigs.where('groupId').equals(activeGroupId).sortBy('minPoints') : []
   , [activeGroupId]);
   
   // Calculate Rank
@@ -238,7 +238,7 @@ export const UserHome = () => {
         <div className="p-6 space-y-3 max-w-md mx-auto mt-4">
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1 mb-2">Menu ({activeGroup?.name})</h3>
             
-            <Link to="/user/gifts" className="block w-full">
+            <Link to="/user/gifts" state={{ groupId: activeGroupId }} className="block w-full">
                 <button className="w-full bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition group active:scale-[0.99]">
                     <div className="flex items-center gap-4">
                     <div className="bg-purple-50 p-3 rounded-xl text-purple-600 group-hover:bg-purple-100 transition">

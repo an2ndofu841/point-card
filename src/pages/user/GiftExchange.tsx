@@ -1,37 +1,38 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
 import { ArrowLeft, Ticket, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 export const GiftExchange = () => {
   const navigate = useNavigate();
-  const gifts = useLiveQuery(() => db.gifts.filter(g => g.active).toArray());
+  const location = useLocation();
+  const groupId = location.state?.groupId as number | undefined;
+  const [userId] = useState('user-sample-123'); // Mock ID
+
+  // Redirect if no group context
+  useEffect(() => {
+    if (!groupId) {
+        navigate('/home');
+    }
+  }, [groupId, navigate]);
+
+  const gifts = useLiveQuery(() => 
+    groupId ? db.gifts.where('groupId').equals(groupId).filter(g => g.active).toArray() : []
+  , [groupId]);
   
-  // Fetch user cache for persistent points
-  const userCache = useLiveQuery(() => db.userCache.get('user-sample-123'));
-  const userPoints = userCache?.points ?? 120; // Default 120 if not in DB
+  // Fetch user membership for points
+  const membership = useLiveQuery(() => 
+    groupId ? db.userMemberships.where({ userId, groupId }).first() : undefined
+  , [userId, groupId]);
+
+  const userPoints = membership?.points ?? 0;
 
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Initialize user cache if not exists
-  useEffect(() => {
-    const initCache = async () => {
-        const exists = await db.userCache.get('user-sample-123');
-        if (!exists) {
-            await db.userCache.add({
-                id: 'user-sample-123',
-                points: 120,
-                rank: 'REGULAR',
-                lastUpdated: Date.now()
-            });
-        }
-    };
-    initCache();
-  }, []);
-
   const handleExchange = async (gift: Gift) => {
+    if (!groupId || !membership?.id) return;
     if (userPoints < gift.pointsRequired) return;
     if (!window.confirm(`${gift.name}を${gift.pointsRequired}ptで交換しますか？`)) return;
 
@@ -39,15 +40,15 @@ export const GiftExchange = () => {
     
     try {
       // 1. Deduct points (Update IndexedDB)
-      await db.userCache.update('user-sample-123', {
+      await db.userMemberships.update(membership.id, {
         points: userPoints - gift.pointsRequired,
         lastUpdated: Date.now()
       });
 
       // 2. Add ticket to local DB
       await db.userTickets.add({
-        userId: 'user-sample-123', 
-        groupId: 1, // Default to group 1 for now
+        userId, 
+        groupId,
         giftId: gift.id!,
         giftName: gift.name,
         status: 'UNUSED',
@@ -56,8 +57,8 @@ export const GiftExchange = () => {
 
       // 3. Add pending transaction for server sync
       await db.pendingScans.add({
-        userId: 'user-sample-123',
-        groupId: 1, // Default to group 1 for now
+        userId,
+        groupId,
         points: -gift.pointsRequired, // Negative points for usage
         type: 'USE_TICKET', 
         timestamp: Date.now(),
@@ -92,6 +93,8 @@ export const GiftExchange = () => {
       </div>
     );
   }
+
+  if (!groupId) return null; // Avoid rendering if redirecting
 
   return (
     <div className="min-h-screen bg-bg-main text-text-main p-6 pb-24">
