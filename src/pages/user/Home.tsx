@@ -12,8 +12,30 @@ export const UserHome = () => {
   const [qrValue, setQrValue] = useState('');
   const { userId } = useCurrentUser(); // Use real userId
   
-  // Fetch User Profile
-  const userProfile = useLiveQuery(() => userId ? db.userCache.get(userId) : undefined, [userId]);
+  // Fetch User Profile (with fallback to Supabase if local cache is missing)
+  const userProfile = useLiveQuery(async () => {
+    if (!userId) return undefined;
+    const cache = await db.userCache.get(userId);
+    // Return cache if it exists and has a name.
+    if (cache?.name) return cache;
+
+    // Try fetch from Supabase if not in cache or name missing
+    if (!isMock) {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.user_metadata?.display_name) {
+            const name = data.user.user_metadata.display_name;
+            
+            // Update or Create local cache
+            if (cache) {
+                await db.userCache.update(userId, { name, lastUpdated: Date.now() });
+            } else {
+                await db.userCache.put({ id: userId, name, lastUpdated: Date.now() });
+            }
+            return { id: userId, name };
+        }
+    }
+    return cache || { id: userId, name: undefined }; // Return whatever we have to avoid undefined flash
+  }, [userId]);
   const userName = userProfile?.name || 'ゲストさん';
 
   // Fetch All Groups User Belongs To (Combined query to avoid render loops)

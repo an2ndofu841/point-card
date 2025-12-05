@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
+import { supabase, isMock } from '../../lib/supabase';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Save, User, Loader2 } from 'lucide-react';
 
@@ -29,6 +30,7 @@ export const ProfileEdit = () => {
     setLoading(true);
 
     try {
+      // 1. Update Local DB
       const exists = await db.userCache.get(userId);
       if (exists) {
         await db.userCache.update(userId, {
@@ -43,7 +45,17 @@ export const ProfileEdit = () => {
         });
       }
       
-      // In a real app, you would also sync this to Supabase here
+      // 2. Sync to Supabase (if not mock)
+      if (!isMock) {
+         const { error } = await supabase.auth.updateUser({
+           data: { display_name: name }
+         });
+         
+         if (error) {
+             console.error("Failed to sync profile to Supabase", error);
+             // We don't block UI for this, but logging it is good
+         }
+      }
       
       setTimeout(() => {
         setLoading(false);
