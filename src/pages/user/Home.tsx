@@ -124,7 +124,16 @@ export const UserHome = () => {
                             points: rm.points || 0,
                             totalPoints: rm.total_points || 0,
                             currentRank: rm.current_rank || 'REGULAR',
-                            selectedDesignId: undefined, // Design preference might be lost unless synced separately
+                            selectedDesignId: undefined,
+                            lastUpdated: Date.now()
+                        });
+                    } else {
+                        // If exists, update points from server (Sync Server -> Local)
+                        // This is critical for receiving points granted by admin
+                        await db.userMemberships.update(exists.id!, {
+                            points: rm.points || 0,
+                            totalPoints: rm.total_points || 0,
+                            currentRank: rm.current_rank || 'REGULAR',
                             lastUpdated: Date.now()
                         });
                     }
