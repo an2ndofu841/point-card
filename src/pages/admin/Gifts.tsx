@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket } from 'lucide-react';
 
 export const ManageGifts = () => {
   // Get current admin group context
@@ -11,6 +11,8 @@ export const ManageGifts = () => {
       const saved = localStorage.getItem('admin_selected_group_id');
       return saved ? parseInt(saved) : 1;
   });
+  
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch group info
   const group = useLiveQuery(() => db.groups.get(groupId));
@@ -65,7 +67,7 @@ export const ManageGifts = () => {
     groupId: groupId
   });
   const [isSaving, setIsSaving] = useState(false);
-
+  
   const handleEdit = (gift?: Gift) => {
     if (gift) {
       setFormData(gift);
