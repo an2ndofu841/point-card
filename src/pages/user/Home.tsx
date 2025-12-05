@@ -173,12 +173,26 @@ export const UserHome = () => {
   useEffect(() => {
     // Generate static QR code on mount (Identity only)
     if (!userId) return;
+    
+    // Sanitize userName to ensure it contains only safe characters for btoa
+    // btoa only supports Latin1 range characters (0-255). 
+    // If userName contains Japanese, we need to encode it properly.
+    const safeName = userName ? encodeURIComponent(userName) : '';
+
     const payload = {
       id: userId,
       ts: Date.now(),
-      name: userName // Include name in QR for scanner
+      name: safeName // Encoded name
     };
-    setQrValue(btoa(JSON.stringify(payload)));
+    // btoa will fail if safeName still has issues (unlikely with encodeURIComponent)
+    // But just in case we double check or wrap
+    try {
+        setQrValue(btoa(JSON.stringify(payload)));
+    } catch (e) {
+        console.error("QR Generation failed", e);
+        // Fallback without name if encoding fails completely
+        setQrValue(btoa(JSON.stringify({ id: userId, ts: Date.now() })));
+    }
   }, [userId, userName]);
 
   // Helper to determine background style properties
