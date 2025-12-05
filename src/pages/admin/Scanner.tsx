@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/db';
-import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle, User } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export const Scanner = () => {
-  const [scanResult, setScanResult] = useState<{id: string, ts: number, action?: string, designId?: number, ticketId?: number, isOld?: boolean} | null>(null);
+  const [scanResult, setScanResult] = useState<{id: string, ts: number, action?: string, designId?: number, ticketId?: number, isOld?: boolean, userName?: string} | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
