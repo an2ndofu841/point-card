@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket } from 'lucide-react';
+import { supabase, isMock } from '../../lib/supabase';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket, Loader2 } from 'lucide-react';
 
 export const ManageGifts = () => {
   // Get current admin group context
@@ -13,6 +14,41 @@ export const ManageGifts = () => {
 
   // Fetch group info
   const group = useLiveQuery(() => db.groups.get(groupId));
+
+  // Fetch from Supabase on mount and sync to local
+  useEffect(() => {
+    const syncGifts = async () => {
+        if (isMock) return;
+        
+        const { data, error } = await supabase
+            .from('gifts')
+            .select('*')
+            .eq('group_id', groupId);
+
+        if (error) {
+            console.error('Error fetching gifts:', error);
+            return;
+        }
+
+        if (data) {
+            // Sync to local
+            // We want to keep local IDs consistent if possible, but for now let's overwrite
+            // To avoid duplicates, we could clear for this group first or use put
+            // Let's use bulkPut
+            await db.gifts.where('groupId').equals(groupId).delete(); // Clear local cache for this group
+            await db.gifts.bulkAdd(data.map(g => ({
+                id: g.id,
+                groupId: g.group_id,
+                name: g.name,
+                pointsRequired: g.points_required,
+                description: g.description,
+                active: g.active,
+                image: g.image_url
+            })));
+        }
+    };
+    syncGifts();
+  }, [groupId]);
 
   // Filter gifts by groupId
   const gifts = useLiveQuery(() => 
@@ -28,6 +64,7 @@ export const ManageGifts = () => {
     active: true,
     groupId: groupId
   });
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleEdit = (gift?: Gift) => {
     if (gift) {
@@ -47,23 +84,59 @@ export const ManageGifts = () => {
 
   const handleSave = async () => {
     if (!formData.name || !formData.pointsRequired) return;
+    setIsSaving(true);
 
     try {
-      if (isEditing === -1) {
-        await db.gifts.add({ ...formData, groupId } as Gift);
-      } else if (isEditing !== null) {
-        await db.gifts.update(isEditing, { ...formData, groupId });
+      if (isMock) {
+          if (isEditing === -1) {
+            await db.gifts.add({ ...formData, groupId } as Gift);
+          } else if (isEditing !== null) {
+            await db.gifts.update(isEditing, { ...formData, groupId });
+          }
+      } else {
+          // Save to Supabase
+          const giftData = {
+              group_id: groupId,
+              name: formData.name,
+              points_required: formData.pointsRequired,
+              description: formData.description,
+              active: formData.active,
+              image_url: formData.image
+          };
+
+          if (isEditing === -1) {
+              const { data, error } = await supabase.from('gifts').insert(giftData).select().single();
+              if (error) throw error;
+              // Save to local with returned ID
+              await db.gifts.add({ ...formData, id: data.id, groupId } as Gift);
+          } else if (isEditing !== null) {
+              const { error } = await supabase.from('gifts').update(giftData).eq('id', isEditing);
+              if (error) throw error;
+              // Update local
+              await db.gifts.update(isEditing, { ...formData, groupId });
+          }
       }
       setIsEditing(null);
     } catch (err) {
       console.error("Failed to save gift", err);
       alert("保存に失敗しました");
+    } finally {
+        setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
     if (window.confirm("この特典を削除してもよろしいですか？")) {
-      await db.gifts.delete(id);
+      try {
+          if (!isMock) {
+              const { error } = await supabase.from('gifts').delete().eq('id', id);
+              if (error) throw error;
+          }
+          await db.gifts.delete(id);
+      } catch (err) {
+          console.error("Delete failed", err);
+          alert("削除に失敗しました");
+      }
     }
   };
 

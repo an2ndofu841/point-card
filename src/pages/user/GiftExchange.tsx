@@ -2,13 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
+import { supabase, isMock } from '../../lib/supabase';
 import { ArrowLeft, Ticket, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 
 export const GiftExchange = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const groupId = location.state?.groupId as number | undefined;
-  const [userId] = useState('user-sample-123'); // Mock ID
+  const { userId } = useCurrentUser();
 
   // Redirect if no group context
   useEffect(() => {
@@ -17,13 +19,47 @@ export const GiftExchange = () => {
     }
   }, [groupId, navigate]);
 
+  // Fetch gifts from Supabase on mount
+  useEffect(() => {
+      const syncGifts = async () => {
+          if (isMock || !groupId) return;
+          
+          const { data, error } = await supabase
+            .from('gifts')
+            .select('*')
+            .eq('group_id', groupId)
+            .eq('active', true);
+
+          if (error) {
+              console.error("Failed to fetch gifts", error);
+              return;
+          }
+
+          if (data && data.length > 0) {
+              // Sync to local
+               // To avoid duplicates, we could clear for this group first or use put
+               // For user side, we might want to just use put to update existing
+               await db.gifts.bulkPut(data.map(g => ({
+                id: g.id,
+                groupId: g.group_id,
+                name: g.name,
+                pointsRequired: g.points_required,
+                description: g.description,
+                active: g.active,
+                image: g.image_url
+            })));
+          }
+      };
+      syncGifts();
+  }, [groupId]);
+
   const gifts = useLiveQuery(() => 
     groupId ? db.gifts.where('groupId').equals(groupId).filter(g => g.active).toArray() : []
   , [groupId]);
   
   // Fetch user membership for points
   const membership = useLiveQuery(() => 
-    groupId ? db.userMemberships.where({ userId, groupId }).first() : undefined
+    (userId && groupId) ? db.userMemberships.where({ userId, groupId }).first() : undefined
   , [userId, groupId]);
 
   const userPoints = membership?.points ?? 0;
