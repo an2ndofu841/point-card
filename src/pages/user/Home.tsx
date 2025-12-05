@@ -82,9 +82,9 @@ export const UserHome = () => {
 
         try {
             // If local memberships are missing, try to fetch from Supabase
-            // Note: This assumes 'user_memberships' table exists.
             // We first check if we have ANY local memberships.
-            const localCount = await db.userMemberships.where('userId').equals(userId).count();
+            // const localCount = await db.userMemberships.where('userId').equals(userId).count();
+            // We want to sync even if we have local data, to ensure we have everything.
             
             // Always try to sync/fetch latest from server if online, to ensure consistency
             const { data: remoteMemberships, error } = await supabase
