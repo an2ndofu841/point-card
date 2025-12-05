@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Edit2, Save, Ticket, Loader2 } from 'lucide-react';
 
 export const ManageGifts = () => {
   // Get current admin group context
@@ -34,9 +34,6 @@ export const ManageGifts = () => {
 
         if (data) {
             // Sync to local
-            // We want to keep local IDs consistent if possible, but for now let's overwrite
-            // To avoid duplicates, we could clear for this group first or use put
-            // Let's use bulkPut
             await db.gifts.where('groupId').equals(groupId).delete(); // Clear local cache for this group
             await db.gifts.bulkAdd(data.map(g => ({
                 id: g.id,
@@ -227,9 +224,10 @@ export const ManageGifts = () => {
             </button>
             <button 
               onClick={handleSave}
-              className="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition flex items-center justify-center gap-2"
+              disabled={isSaving}
+              className="flex-1 bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <Save size={18} /> 保存する
+              {isSaving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> 保存する</>}
             </button>
           </div>
         </div>
