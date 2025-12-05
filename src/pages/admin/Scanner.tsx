@@ -80,9 +80,11 @@ export const Scanner = () => {
     try {
       // Decode Base64
       const json = JSON.parse(atob(text));
-      const { id, ts, userId } = json; // support both 'id' (points) and 'userId' (ticket)
+      const { id, ts, userId, name: encodedName } = json; // support both 'id' (points) and 'userId' (ticket)
       
       const targetId = id || userId;
+      const userName = encodedName ? decodeURIComponent(encodedName) : undefined;
+
       if (!targetId || !ts) throw new Error("Invalid Format");
       
       const now = Date.now();
@@ -100,7 +102,7 @@ export const Scanner = () => {
          return;
       }
       
-      setScanResult({ ...json, id: targetId, isOld });
+      setScanResult({ ...json, id: targetId, isOld, userName });
       setError(null);
       pauseScanner();
       
