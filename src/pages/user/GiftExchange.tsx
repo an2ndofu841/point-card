@@ -68,7 +68,7 @@ export const GiftExchange = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleExchange = async (gift: Gift) => {
-    if (!groupId || !membership?.id) return;
+    if (!userId || !groupId || !membership?.id) return;
     if (userPoints < gift.pointsRequired) return;
     if (!window.confirm(`${gift.name}を${gift.pointsRequired}ptで交換しますか？`)) return;
 
