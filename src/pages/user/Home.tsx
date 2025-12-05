@@ -175,10 +175,11 @@ export const UserHome = () => {
     if (!userId) return;
     const payload = {
       id: userId,
-      ts: Date.now()
+      ts: Date.now(),
+      name: userName // Include name in QR for scanner
     };
     setQrValue(btoa(JSON.stringify(payload)));
-  }, [userId]);
+  }, [userId, userName]);
 
   // Helper to determine background style properties
   const getBackgroundStyles = (imageUrl?: string) => {

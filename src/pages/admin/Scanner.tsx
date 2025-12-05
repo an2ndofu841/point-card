@@ -309,7 +309,11 @@ export const Scanner = () => {
                       </div>
                     )}
                     <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">User Detected</p>
-                    <p className="text-xl font-mono font-bold text-gray-900 truncate px-4">{scanResult.id}</p>
+                    <p className="text-xl font-bold text-gray-900 truncate px-4 flex items-center justify-center gap-2">
+                        <User size={20} className="text-primary" />
+                        {scanResult.userName || <span className="text-base font-mono">{scanResult.id.substring(0, 8)}...</span>}
+                    </p>
+                    {scanResult.userName && <p className="text-xs font-mono text-gray-400 mt-1">{scanResult.id}</p>}
                   </div>
                   
                   {/* Action: Use Ticket */}
