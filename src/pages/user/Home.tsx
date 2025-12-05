@@ -52,6 +52,8 @@ export const UserHome = () => {
     const memberships = await db.userMemberships.where('userId').equals(userId).toArray();
     if (!memberships.length) return [];
     const groupIds = memberships.map(m => m.groupId);
+    // Only fetch groups that exist locally (synced)
+    // In a full app we might want to sync missing groups here too
     return await db.groups.where('id').anyOf(groupIds).toArray();
   }, [userId]);
 
@@ -60,12 +62,80 @@ export const UserHome = () => {
 
   // Initial selection of group
   useEffect(() => {
+    // If activeGroupId is null but we have groups, select the first one
     if (activeGroupId === null && groups && groups.length > 0) {
         setActiveGroupId(groups[0].id);
+    }
+    // Also, if we have a selected group but it's not in the list anymore (rare), fallback
+    if (activeGroupId !== null && groups && !groups.find(g => g.id === activeGroupId)) {
+        if (groups.length > 0) setActiveGroupId(groups[0].id);
+        else setActiveGroupId(null);
     }
   }, [groups, activeGroupId]);
 
   const activeGroup = groups?.find(g => g.id === activeGroupId);
+
+  // Sync Groups on Load (Restore from Supabase if local DB is empty after clear)
+  useEffect(() => {
+      const restoreMemberships = async () => {
+        if (!userId || isMock) return;
+
+        try {
+            // If local memberships are missing, try to fetch from Supabase
+            // Note: This assumes 'user_memberships' table exists.
+            // We first check if we have ANY local memberships.
+            const localCount = await db.userMemberships.where('userId').equals(userId).count();
+            
+            // Always try to sync/fetch latest from server if online, to ensure consistency
+            const { data: remoteMemberships, error } = await supabase
+                .from('user_memberships')
+                .select('*')
+                .eq('user_id', userId);
+
+            if (error || !remoteMemberships) {
+                // If table doesn't exist or error, we rely on local.
+                // console.warn("Failed to fetch remote memberships", error);
+                return;
+            }
+
+            if (remoteMemberships.length > 0) {
+                // Restore/Sync memberships
+                for (const rm of remoteMemberships) {
+                    const exists = await db.userMemberships.where({ userId: userId, groupId: rm.group_id }).first();
+                    if (!exists) {
+                        // Fetch group info if missing
+                        let group = await db.groups.get(rm.group_id);
+                        if (!group) {
+                            const { data: groupData } = await supabase.from('groups').select('*').eq('id', rm.group_id).single();
+                            if (groupData) {
+                                await db.groups.add({
+                                    id: groupData.id,
+                                    name: groupData.name,
+                                    themeColor: groupData.theme_color,
+                                    logoUrl: groupData.logo_url
+                                });
+                            }
+                        }
+
+                        // Add membership
+                        await db.userMemberships.add({
+                            userId: userId,
+                            groupId: rm.group_id,
+                            points: rm.points || 0,
+                            totalPoints: rm.total_points || 0,
+                            currentRank: rm.current_rank || 'REGULAR',
+                            selectedDesignId: undefined, // Design preference might be lost unless synced separately
+                            lastUpdated: Date.now()
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Restore error", err);
+        }
+      };
+      restoreMemberships();
+  }, [userId]);
 
   // Fetch Membership for Active Group
   const membership = useLiveQuery(() => 

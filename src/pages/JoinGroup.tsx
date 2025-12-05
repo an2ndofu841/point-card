@@ -87,7 +87,30 @@ export const JoinGroup = () => {
             return;
         }
 
-        // 4. Create membership
+        // 4. Create membership (Local & Supabase)
+        
+        // Sync to Supabase first (if not mock)
+        // Note: Ideally we'd have a 'memberships' table.
+        // Since we don't have the migration file yet, we'll try to insert, and catch error if table doesn't exist.
+        // For now, we assume the table exists or we'll fail gracefully.
+        
+        if (!isMock) {
+             try {
+                 await supabase
+                  .from('user_memberships')
+                  .insert({
+                      user_id: userId,
+                      group_id: gId,
+                      points: 0,
+                      total_points: 0,
+                      current_rank: 'REGULAR'
+                  });
+             } catch (e) {
+                 // Table might not exist, just log warning
+                 console.warn("Failed to sync membership to Supabase (table missing?)", e);
+             }
+        }
+
         await db.userMemberships.add({
             userId,
             groupId: gId,
