@@ -15,6 +15,59 @@ export const AdminDashboard = () => {
       return saved ? parseInt(saved) : 1;
   });
 
+  // Fetch Groups from Supabase on mount (sync logic)
+  useEffect(() => {
+    const syncGroups = async () => {
+      try {
+        // Ensure mock group exists if empty OR in mock mode
+        if (isMock) {
+            const count = await db.groups.count();
+            if (count === 0) {
+                await db.groups.bulkPut([
+                    { id: 1, name: 'Appare!', themeColor: '#2563EB' },
+                    { id: 2, name: 'Mock Group 2', themeColor: '#10B981' }
+                ]);
+            }
+            return;
+        }
+
+        const { data, error } = await supabase.from('groups').select('*');
+        if (error) {
+            console.error('Error fetching groups:', error);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            // Sync to local DB
+            await db.groups.bulkPut(data.map(g => ({
+                id: g.id,
+                name: g.name,
+                themeColor: g.theme_color || g.themeColor || '#000000',
+                logoUrl: g.logo_url || g.logoUrl
+            })));
+        } else {
+           // If no groups in Supabase, check if local DB is empty.
+           // If so, maybe insert a default group locally or prompt user?
+           // For now, let's assume if Supabase is empty, we might want to create a default one if this is the first run?
+           // But usually admin creates groups. If 0 groups, just show empty.
+        }
+      } catch (err) {
+          console.error("Group sync failed", err);
+      }
+    };
+    syncGroups();
+  }, []);
+
+  // Validate selectedGroupId when groups change
+  useEffect(() => {
+      if (groups && groups.length > 0) {
+          const exists = groups.find(g => g.id === selectedGroupId);
+          if (!exists) {
+              setSelectedGroupId(groups[0].id);
+          }
+      }
+  }, [groups, selectedGroupId]);
+
   useEffect(() => {
       if (selectedGroupId) {
           localStorage.setItem('admin_selected_group_id', selectedGroupId.toString());
