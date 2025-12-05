@@ -92,18 +92,20 @@ export const UserHome = () => {
                 .select('*')
                 .eq('user_id', userId);
 
-            if (error || !remoteMemberships) {
-                // If table doesn't exist or error, we rely on local.
-                // console.warn("Failed to fetch remote memberships", error);
+            if (error) {
+                console.warn("Failed to fetch remote memberships", error);
                 return;
             }
 
-            if (remoteMemberships.length > 0) {
+            // Important: Even if remoteMemberships is empty array, we should process it if we want to handle deletion, 
+            // but here we focus on updates/restores.
+            if (remoteMemberships) {
                 // Restore/Sync memberships
                 for (const rm of remoteMemberships) {
                     const exists = await db.userMemberships.where({ userId: userId, groupId: rm.group_id }).first();
+                    
                     if (!exists) {
-                        // Fetch group info if missing
+                        // Fetch group info if missing locally
                         let group = await db.groups.get(rm.group_id);
                         if (!group) {
                             const { data: groupData } = await supabase.from('groups').select('*').eq('id', rm.group_id).single();
@@ -128,14 +130,18 @@ export const UserHome = () => {
                             lastUpdated: Date.now()
                         });
                     } else {
-                        // If exists, update points from server (Sync Server -> Local)
-                        // This is critical for receiving points granted by admin
-                        await db.userMemberships.update(exists.id!, {
-                            points: rm.points || 0,
-                            totalPoints: rm.total_points || 0,
-                            currentRank: rm.current_rank || 'REGULAR',
-                            lastUpdated: Date.now()
-                        });
+                        // Update local if server has newer data OR different points
+                        // Since server is source of truth for points granted by admin, we trust server points here.
+                        // However, we should be careful not to overwrite local changes if offline mode is a thing, 
+                        // but for now assuming admin grants are primary source of point changes.
+                        if (exists.points !== rm.points || exists.totalPoints !== rm.total_points) {
+                             await db.userMemberships.update(exists.id!, {
+                                points: rm.points || 0,
+                                totalPoints: rm.total_points || 0,
+                                currentRank: rm.current_rank || 'REGULAR',
+                                lastUpdated: Date.now()
+                            });
+                        }
                     }
                 }
             }
