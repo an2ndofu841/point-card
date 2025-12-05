@@ -44,11 +44,67 @@ export const Sync = () => {
            metadata: { ticketId: s.ticketId }
          }));
          
+         // Insert history
          const { error: apiError } = await supabase
            .from('point_history')
            .insert(records);
            
          if (apiError) throw apiError;
+
+         // Update User Memberships Total Points
+         // We need to aggregate points per user/group and update 'user_memberships' table
+         // Since we can't easily do a bulk update with calculation in one go via standard SDK for multiple different users securely without a stored procedure,
+         // we will iterate or use a specific RPC if available. For now, we iterate to be safe.
+         
+         // Group by user+group
+         const updates = new Map<string, number>();
+         pointLogs.forEach(log => {
+             const key = `${log.userId}:${log.groupId || 1}`;
+             const current = updates.get(key) || 0;
+             updates.set(key, current + log.points);
+         });
+
+         for (const [key, pointsToAdd] of updates.entries()) {
+             const [userId, gIdStr] = key.split(':');
+             const groupId = parseInt(gIdStr);
+
+             // Fetch current first to increment safely-ish (or use RPC increment)
+             // Ideally: supabase.rpc('increment_points', { user_id, group_id, delta })
+             // Fallback: Select -> Update
+             
+             const { data: current } = await supabase
+                .from('user_memberships')
+                .select('points, total_points')
+                .eq('user_id', userId)
+                .eq('group_id', groupId)
+                .single();
+             
+             if (current) {
+                 await supabase
+                    .from('user_memberships')
+                    .update({
+                        points: (current.points || 0) + pointsToAdd,
+                        total_points: (current.total_points || 0) + pointsToAdd, // Only add if positive? Total points usually is lifetime.
+                        // Note: If pointsToAdd is negative (usage), we subtract from points but total_points logic depends on if it tracks 'lifetime earnings' or 'current balance'.
+                        // Assuming total_points is lifetime earnings: we only add positive grants.
+                        // Assuming points is current balance: we add/subtract.
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', userId)
+                    .eq('group_id', groupId);
+             } else {
+                 // Create membership if not exists (unlikely if they have a card, but possible)
+                 if (pointsToAdd > 0) {
+                     await supabase.from('user_memberships').insert({
+                         user_id: userId,
+                         group_id: groupId,
+                         points: pointsToAdd,
+                         total_points: pointsToAdd,
+                         current_rank: 'REGULAR'
+                     });
+                 }
+             }
+         }
        }
 
        // 2. Sync Design Grants (Upsert to user_designs table)
