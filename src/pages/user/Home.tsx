@@ -19,24 +19,31 @@ export const UserHome = () => {
     const cache = await db.userCache.get(userId);
     // Return cache if it exists and has a name.
     if (cache?.name) return cache;
+    return cache || { id: userId, name: undefined }; 
+  }, [userId]);
+  
+  // Sync profile in useEffect to avoid loop
+  useEffect(() => {
+      const syncProfile = async () => {
+          if (!userId || isMock) return;
+          // Check cache first
+          const cache = await db.userCache.get(userId);
+          if (cache?.name) return;
 
-    // Try fetch from Supabase if not in cache or name missing
-    if (!isMock) {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.user_metadata?.display_name) {
+          // Fetch from Supabase
+          const { data } = await supabase.auth.getUser();
+          if (data?.user?.user_metadata?.display_name) {
             const name = data.user.user_metadata.display_name;
-            
-            // Update or Create local cache
             if (cache) {
                 await db.userCache.update(userId, { name, lastUpdated: Date.now() });
             } else {
                 await db.userCache.put({ id: userId, name, lastUpdated: Date.now() });
             }
-            return { id: userId, name };
-        }
-    }
-    return cache || { id: userId, name: undefined }; // Return whatever we have to avoid undefined flash
+          }
+      };
+      syncProfile();
   }, [userId]);
+
   const userName = userProfile?.name || 'ゲストさん';
 
   // Fetch All Groups User Belongs To (Combined query to avoid render loops)
