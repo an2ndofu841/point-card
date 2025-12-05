@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
 import { supabase, isMock } from '../lib/supabase';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const { userId } = useCurrentUser(); // Use real userId hook
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('処理中...');
 
@@ -18,16 +20,19 @@ export const JoinGroup = () => {
         return;
       }
 
+      if (!userId) {
+        // Wait for userId to be loaded.
+        // If it takes too long, auth state might be loading or not logged in.
+        // But useCurrentUser handles loading state internally initially.
+        return; 
+      }
+
       const gId = parseInt(groupId);
       if (isNaN(gId)) {
         setStatus('error');
         setMessage('無効なグループIDです');
         return;
       }
-
-      // Mock User ID (In real app, check auth state here)
-      const userId = 'user-sample-123'; 
-      // If not logged in, should redirect to /login?redirect=/join/:groupId
       
       try {
         // 1. Check if group exists locally
@@ -106,7 +111,7 @@ export const JoinGroup = () => {
     };
 
     join();
-  }, [groupId, navigate]);
+  }, [groupId, navigate, userId]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-main p-6">
