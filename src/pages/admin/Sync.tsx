@@ -80,28 +80,37 @@ export const Sync = () => {
                 .single();
              
              if (current) {
-                 await supabase
+                 const { error: updateError } = await supabase
                     .from('user_memberships')
                     .update({
                         points: (current.points || 0) + pointsToAdd,
-                        total_points: (current.total_points || 0) + pointsToAdd, // Only add if positive? Total points usually is lifetime.
-                        // Note: If pointsToAdd is negative (usage), we subtract from points but total_points logic depends on if it tracks 'lifetime earnings' or 'current balance'.
-                        // Assuming total_points is lifetime earnings: we only add positive grants.
-                        // Assuming points is current balance: we add/subtract.
+                        total_points: (current.total_points || 0) + pointsToAdd,
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', userId)
                     .eq('group_id', groupId);
+
+                 if (updateError) {
+                     console.error("Failed to update membership", updateError);
+                     // Don't throw immediately to allow other updates? Or throw to warn?
+                     // Let's throw to be safe and ensure retry.
+                     throw updateError;
+                 }
              } else {
                  // Create membership if not exists (unlikely if they have a card, but possible)
                  if (pointsToAdd > 0) {
-                     await supabase.from('user_memberships').insert({
+                     const { error: insertError } = await supabase.from('user_memberships').insert({
                          user_id: userId,
                          group_id: groupId,
                          points: pointsToAdd,
                          total_points: pointsToAdd,
                          current_rank: 'REGULAR'
                      });
+                     
+                     if (insertError) {
+                         console.error("Failed to insert membership", insertError);
+                         throw insertError;
+                     }
                  }
              }
          }
