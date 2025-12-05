@@ -66,7 +66,6 @@ export const ManageGifts = () => {
     active: true,
     groupId: groupId
   });
-  const [isSaving, setIsSaving] = useState(false);
   
   const handleEdit = (gift?: Gift) => {
     if (gift) {
