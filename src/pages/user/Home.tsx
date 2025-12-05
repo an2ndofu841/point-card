@@ -6,6 +6,7 @@ import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { supabase, isMock } from '../../lib/supabase';
 
 export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
