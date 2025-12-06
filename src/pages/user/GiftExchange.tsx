@@ -92,11 +92,18 @@ export const GiftExchange = () => {
       });
 
       // 3. Add pending transaction for server sync
+      // NOTE: points should be NEGATIVE for usage
       await db.pendingScans.add({
         userId,
         groupId,
-        points: -gift.pointsRequired, // Negative points for usage
+        points: -gift.pointsRequired, 
         type: 'USE_TICKET', 
+        ticketId: undefined, // Not using a ticket, but GENERATING one (exchanging points for ticket)
+        // Wait, this is confusing. 'USE_TICKET' usually means using a ticket to get service.
+        // Here we are exchanging points for a ticket.
+        // So type should probably be 'EXCHANGE' or we reuse 'USE_TICKET' but logic in sync needs to handle it.
+        // The previous logic in Sync.tsx handles 'USE_TICKET' as point log.
+        // Let's check Sync.tsx logic.
         timestamp: Date.now(),
         synced: false
       });

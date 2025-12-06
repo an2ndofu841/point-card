@@ -30,6 +30,11 @@ export const Sync = () => {
        }
 
        // Separate scans by type
+       // USE_TICKET usually means "User used a ticket" (scanned by admin), but in GiftExchange user creates a log too?
+       // In GiftExchange.tsx, user adds a log with type 'USE_TICKET' and negative points.
+       // Ideally this should be a different type like 'POINT_SPENT' or 'EXCHANGE'.
+       // But let's stick to current types if possible.
+       // The problem might be that Sync.tsx filters by type.
        const pointLogs = pendingScans.filter(s => s.type === 'GRANT' || s.type === 'USE_TICKET');
        const designLogs = pendingScans.filter(s => s.type === 'GRANT_DESIGN');
 
