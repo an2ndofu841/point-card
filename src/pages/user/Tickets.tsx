@@ -1,17 +1,73 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type UserTicket } from '../../lib/db';
+import { supabase, isMock } from '../../lib/supabase';
+import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Ticket, Clock, ChevronRight, X } from 'lucide-react';
 
 export const UserTickets = () => {
+  const { userId } = useCurrentUser();
+
+  // Sync tickets from Supabase on mount
+  useEffect(() => {
+      const syncTickets = async () => {
+          if (isMock || !userId) return;
+
+          // Ideally we filter by groupId too if this page is group-specific
+          // But current TicketList UI seems global or context-less?
+          // Let's assume we want ALL unused tickets for this user.
+          
+          // We need a table for user_tickets in Supabase.
+          // Assuming 'user_tickets' table exists (created in SQL previously?)
+          // If not, we need to create it. 
+          // Let's check if we fetch from 'user_tickets'.
+          
+          const { data, error } = await supabase
+            .from('user_tickets')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('status', 'UNUSED');
+
+          if (error) {
+              // If error, maybe table doesn't exist yet.
+              console.warn("Failed to fetch tickets", error);
+              return;
+          }
+
+          if (data) {
+              // Sync to local
+              // We want to overwrite local unused tickets with server ones to ensure consistency
+              // But we also don't want to lose offline tickets if any.
+              // For now, let's UPSERT based on ID if possible, or just ADD missing ones.
+              // Actually, if we clear cache, local is empty.
+              
+              // Map Supabase columns to local columns
+              const tickets: UserTicket[] = data.map(t => ({
+                  id: t.id,
+                  userId: t.user_id,
+                  groupId: t.group_id,
+                  giftId: t.gift_id,
+                  giftName: t.gift_name, // Assuming we store name, or need to join gifts table
+                  status: t.status,
+                  acquiredAt: new Date(t.created_at).getTime(),
+                  usedAt: t.used_at ? new Date(t.used_at).getTime() : undefined
+              }));
+
+              await db.userTickets.bulkPut(tickets);
+          }
+      };
+      syncTickets();
+  }, [userId]);
+
   const tickets = useLiveQuery(() => 
-    db.userTickets
-      .where('status').equals('UNUSED')
+    userId ? db.userTickets
+      .where('userId').equals(userId)
+      .filter(t => t.status === 'UNUSED')
       .reverse()
-      .toArray()
-  );
+      .toArray() : []
+  , [userId]);
 
   const [selectedTicket, setSelectedTicket] = useState<UserTicket | null>(null);
   const [qrValue, setQrValue] = useState('');

@@ -129,6 +129,16 @@ export const GiftExchange = () => {
                       created_at: new Date().toISOString(),
                       metadata: { ticketId: undefined, giftId: gift.id, giftName: gift.name }
                   });
+                  
+                  // INSERT TICKET to user_tickets table in Supabase
+                  await supabase.from('user_tickets').insert({
+                      user_id: userId,
+                      group_id: groupId,
+                      gift_id: gift.id,
+                      gift_name: gift.name,
+                      status: 'UNUSED',
+                      created_at: new Date().toISOString()
+                  });
               }
           }
       }
