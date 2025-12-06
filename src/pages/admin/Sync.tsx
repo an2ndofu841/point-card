@@ -38,7 +38,7 @@ export const Sync = () => {
          const records = pointLogs.map(s => ({
            user_id: s.userId,
            group_id: s.groupId || 1, // Default to 1 if missing
-           points: s.points,
+           points: s.points, // s.points can be negative for usage
            type: s.type,
            created_at: new Date(s.timestamp).toISOString(),
            metadata: { ticketId: s.ticketId }
@@ -53,25 +53,19 @@ export const Sync = () => {
 
          // Update User Memberships Total Points
          // We need to aggregate points per user/group and update 'user_memberships' table
-         // Since we can't easily do a bulk update with calculation in one go via standard SDK for multiple different users securely without a stored procedure,
-         // we will iterate or use a specific RPC if available. For now, we iterate to be safe.
          
          // Group by user+group
          const updates = new Map<string, number>();
          pointLogs.forEach(log => {
              const key = `${log.userId}:${log.groupId || 1}`;
              const current = updates.get(key) || 0;
-             updates.set(key, current + log.points);
+             updates.set(key, current + log.points); // log.points is negative for usage, positive for grant
          });
 
          for (const [key, pointsToAdd] of updates.entries()) {
              const [userId, gIdStr] = key.split(':');
              const groupId = parseInt(gIdStr);
 
-             // Fetch current first to increment safely-ish (or use RPC increment)
-             // Ideally: supabase.rpc('increment_points', { user_id, group_id, delta })
-             // Fallback: Select -> Update
-             
              const { data: current } = await supabase
                 .from('user_memberships')
                 .select('points, total_points')
@@ -80,11 +74,21 @@ export const Sync = () => {
                 .single();
              
              if (current) {
+                 // If pointsToAdd is negative (usage), we subtract from points.
+                 // For total_points (lifetime), we usually only add POSITIVE grants. 
+                 // We shouldn't reduce total_points when user spends points.
+                 // So we need to separate "points delta" from "total points delta".
+                 
+                 // Recalculate deltas for this user/group
+                 const logsForUser = pointLogs.filter(l => l.userId === userId && (l.groupId || 1) === groupId);
+                 const balanceDelta = logsForUser.reduce((sum, log) => sum + log.points, 0);
+                 const lifetimeDelta = logsForUser.reduce((sum, log) => sum + (log.points > 0 ? log.points : 0), 0);
+
                  const { error: updateError } = await supabase
                     .from('user_memberships')
                     .update({
-                        points: (current.points || 0) + pointsToAdd,
-                        total_points: (current.total_points || 0) + pointsToAdd,
+                        points: (current.points || 0) + balanceDelta,
+                        total_points: (current.total_points || 0) + lifetimeDelta,
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', userId)
@@ -92,8 +96,6 @@ export const Sync = () => {
 
                  if (updateError) {
                      console.error("Failed to update membership", updateError);
-                     // Don't throw immediately to allow other updates? Or throw to warn?
-                     // Let's throw to be safe and ensure retry.
                      throw updateError;
                  }
              } else {
