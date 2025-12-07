@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/db';
+import { supabase, isMock } from '../../lib/supabase';
 import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle, User } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 
@@ -176,11 +177,16 @@ export const Scanner = () => {
     }
   };
 
+import { supabase, isMock } from '../../lib/supabase'; // Import supabase
+
+export const Scanner = () => {
+  // ... existing code ...
+
   const grantDesign = async (designId: number) => {
     if (!scanResult) return;
 
     try {
-      // Add user owned design (Scoped to Group)
+      // 1. Add user owned design (Scoped to Group) - Local DB
       await db.userDesigns.add({
         userId: scanResult.id,
         groupId: groupId,
@@ -188,7 +194,23 @@ export const Scanner = () => {
         acquiredAt: Date.now()
       });
 
-      // Log transaction
+      // 2. Sync to Supabase IMMEDIATELY (Online only)
+      if (!isMock) {
+          const { error } = await supabase.from('user_designs').insert({
+              user_id: scanResult.id,
+              group_id: groupId,
+              design_id: designId,
+              acquired_at: new Date().toISOString()
+          });
+          
+          if (error) {
+              console.error("Failed to sync design grant to Supabase", error);
+              // We might want to alert or just rely on local pending sync?
+              // But 'pendingScans' sync logic (in Sync.tsx) needs to handle GRANT_DESIGN too.
+          }
+      }
+
+      // 3. Log transaction
       await db.pendingScans.add({
         userId: scanResult.id,
         groupId: groupId,
@@ -196,8 +218,9 @@ export const Scanner = () => {
         type: 'GRANT_DESIGN',
         designId: designId,
         timestamp: Date.now(),
-        synced: false
+        synced: !isMock // Mark as synced if not mock (assuming success above)
       });
+
 
       const designName = designs?.find(d => d.id === designId)?.name;
       setSuccessMsg(`デザイン「${designName}」を付与しました`);

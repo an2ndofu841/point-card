@@ -98,15 +98,87 @@ export const ManageDesigns = () => {
     }
   };
 
+  // Sync designs from Supabase on mount
+  React.useEffect(() => {
+    const syncDesigns = async () => {
+        if (isMock || !groupId) return;
+
+        const { data, error } = await supabase
+            .from('card_designs')
+            .select('*')
+            .eq('group_id', groupId);
+
+        if (error) {
+            console.error("Failed to fetch designs", error);
+            return;
+        }
+
+        if (data && data.length > 0) {
+            await db.cardDesigns.bulkPut(data.map(d => ({
+                id: d.id,
+                groupId: d.group_id,
+                name: d.name,
+                imageUrl: d.image_url,
+                themeColor: d.theme_color
+            })));
+        }
+    };
+    syncDesigns();
+  }, [groupId]);
+
   const handleSave = async () => {
     if (!formData.name) return;
 
     try {
-      if (isEditing === -1) {
-        await db.cardDesigns.add({ ...formData, groupId } as CardDesign);
-      } else if (isEditing !== null) {
-        await db.cardDesigns.update(isEditing, { ...formData, groupId });
+      if (isMock) {
+          if (isEditing === -1) {
+            await db.cardDesigns.add({ ...formData, groupId } as CardDesign);
+          } else if (isEditing !== null) {
+            await db.cardDesigns.update(isEditing, { ...formData, groupId });
+          }
+      } else {
+          // Real Supabase Sync
+          if (isEditing === -1) {
+              // Insert
+              const { data, error } = await supabase
+                  .from('card_designs')
+                  .insert({
+                      group_id: groupId,
+                      name: formData.name,
+                      image_url: formData.imageUrl,
+                      theme_color: formData.themeColor
+                  })
+                  .select()
+                  .single();
+              
+              if (error) throw error;
+              
+              // Add to local with returned ID
+              await db.cardDesigns.add({ 
+                  id: data.id,
+                  groupId: data.group_id,
+                  name: data.name,
+                  imageUrl: data.image_url,
+                  themeColor: data.theme_color
+              });
+
+          } else if (isEditing !== null) {
+              // Update
+              const { error } = await supabase
+                  .from('card_designs')
+                  .update({
+                      name: formData.name,
+                      image_url: formData.imageUrl,
+                      theme_color: formData.themeColor
+                  })
+                  .eq('id', isEditing);
+
+              if (error) throw error;
+
+              await db.cardDesigns.update(isEditing, { ...formData, groupId });
+          }
       }
+
       setIsEditing(null);
     } catch (err) {
       console.error("Failed to save design", err);
@@ -116,6 +188,14 @@ export const ManageDesigns = () => {
 
   const handleDelete = async (id: number) => {
     if (window.confirm("このデザインを削除してもよろしいですか？")) {
+      if (!isMock) {
+          const { error } = await supabase.from('card_designs').delete().eq('id', id);
+          if (error) {
+              console.error("Failed to delete from Supabase", error);
+              alert("削除に失敗しました");
+              return;
+          }
+      }
       await db.cardDesigns.delete(id);
     }
   };
