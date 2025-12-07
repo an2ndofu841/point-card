@@ -4,6 +4,7 @@ import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Check, Lock, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { supabase, isMock } from '../../lib/supabase';
 
 export const UserDesigns = () => {
   const { userId } = useCurrentUser();
@@ -16,6 +17,35 @@ export const UserDesigns = () => {
   , [userId]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<number | undefined>(stateGroupId);
+
+  // Sync user designs from Supabase on mount (or when group changes)
+  useEffect(() => {
+      const syncUserDesigns = async () => {
+          if (isMock || !userId || !selectedGroupId) return;
+
+          const { data, error } = await supabase
+            .from('user_designs')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('group_id', selectedGroupId);
+
+          if (error) {
+              console.error("Failed to fetch user designs", error);
+              return;
+          }
+
+          if (data && data.length > 0) {
+              await db.userDesigns.bulkPut(data.map(ud => ({
+                  id: ud.id, // Optional if auto-increment, but good for sync
+                  userId: ud.user_id,
+                  groupId: ud.group_id,
+                  designId: ud.design_id,
+                  acquiredAt: new Date(ud.acquired_at).getTime()
+              })));
+          }
+      };
+      syncUserDesigns();
+  }, [userId, selectedGroupId]);
 
   // If only one group, auto-select it if no state provided
   useEffect(() => {
