@@ -133,9 +133,12 @@ export const Sync = () => {
          }));
 
          // Note: Assuming user_designs table exists in Supabase
+         // The constraint name might vary, but unique(user_id, group_id, design_id) should handle conflicts.
+         // If Supabase returns error on conflict without explicit ON CONFLICT, we might need to loop or use ignore.
+         // upsert works if primary key or unique constraint matches.
          const { error: designError } = await supabase
            .from('user_designs')
-           .upsert(designRecords, { onConflict: 'user_id, design_id' }); // Prevent duplicates
+           .upsert(designRecords, { onConflict: 'user_id, group_id, design_id' }); // Correct composite unique constraint
          
          if (designError) throw designError;
        }
