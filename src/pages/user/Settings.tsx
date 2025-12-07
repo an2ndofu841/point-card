@@ -40,13 +40,13 @@ export const UserSettings = () => {
             {/* Group Context is needed for Designs, passing via state is tricky from global settings without active group selection */}
             {/* Ideally Settings should be per-group or have a group selector, but for now we assume handled via Home -> Designs link directly */}
             
-            <Link to="/home" className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition text-left">
+            <div className="w-full p-4 flex items-center justify-between bg-gray-50 text-left">
                <div className="flex items-center gap-3">
-                 <Palette size={20} className="text-primary" />
-                 <span className="font-bold text-sm">券面デザイン変更 (ホームから選択)</span>
+                 <Palette size={20} className="text-gray-400" />
+                 <span className="font-bold text-sm text-gray-500">券面デザイン変更</span>
                </div>
-               <ChevronRight size={18} className="text-gray-300" />
-            </Link>
+               <span className="text-xs text-primary font-bold bg-blue-50 px-2 py-1 rounded">ホームから選択</span>
+            </div>
           </div>
         </section>
 
