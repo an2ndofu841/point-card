@@ -177,11 +177,6 @@ export const Scanner = () => {
     }
   };
 
-import { supabase, isMock } from '../../lib/supabase'; // Import supabase
-
-export const Scanner = () => {
-  // ... existing code ...
-
   const grantDesign = async (designId: number) => {
     if (!scanResult) return;
 
