@@ -101,11 +101,9 @@ export const UserDesigns = () => {
     <div className="min-h-screen bg-bg-main text-text-main p-6 pb-24 font-sans">
       <div className="flex items-center mb-8">
         <button onClick={() => {
-            if (stateGroupId) {
-                navigate('/home');
-            } else {
-                setSelectedGroupId(undefined); // Go back to selector if came from settings
-            }
+            // Always go back to home, regardless of how we got here.
+            // The user wants to "return" to the main screen.
+            navigate('/home');
         }} className="mr-4 p-2 bg-white rounded-full border border-gray-100 shadow-sm hover:bg-gray-50 transition">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
