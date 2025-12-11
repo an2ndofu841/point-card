@@ -190,6 +190,7 @@ export const Scanner = () => {
       });
 
       // 2. Sync to Supabase IMMEDIATELY (Online only)
+      let isSynced = false;
       if (!isMock) {
           const { error } = await supabase.from('user_designs').insert({
               user_id: scanResult.id,
@@ -200,8 +201,9 @@ export const Scanner = () => {
           
           if (error) {
               console.error("Failed to sync design grant to Supabase", error);
-              // We might want to alert or just rely on local pending sync?
-              // But 'pendingScans' sync logic (in Sync.tsx) needs to handle GRANT_DESIGN too.
+              // Fallback to offline sync (isSynced remains false)
+          } else {
+              isSynced = true;
           }
       }
 
@@ -213,7 +215,7 @@ export const Scanner = () => {
         type: 'GRANT_DESIGN',
         designId: designId,
         timestamp: Date.now(),
-        synced: !isMock // Mark as synced if not mock (assuming success above)
+        synced: isSynced
       });
 
 

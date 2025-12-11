@@ -75,7 +75,9 @@ export const UserDesigns = () => {
   
   // Fetch user owned designs for this group
   const userDesigns = useLiveQuery(() => 
-    (userId && groupId) ? db.userDesigns.where({ userId, groupId }).toArray() : []
+    (userId && groupId) 
+      ? db.userDesigns.where('userId').equals(userId).filter(d => d.groupId === groupId).toArray() 
+      : []
   , [userId, groupId]);
   
   const handleSelect = async (designId?: number) => {
