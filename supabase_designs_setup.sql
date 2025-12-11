@@ -41,7 +41,7 @@ create policy "Authenticated users can delete card designs"
   on public.card_designs for delete
   using ( auth.role() = 'authenticated' );
 
--- User Designs: Users can view their own, Authenticated (Admin) can insert for users
+-- User Designs: Users can view their own, Authenticated (Admin) can insert/update for users
 create policy "Users can view their own designs"
   on public.user_designs for select
   using ( auth.uid() = user_id );
@@ -50,6 +50,10 @@ create policy "Authenticated users can insert user designs"
   on public.user_designs for insert
   with check ( auth.role() = 'authenticated' );
 
+create policy "Authenticated users can update user designs"
+  on public.user_designs for update
+  using ( auth.role() = 'authenticated' );
+
 -- Grant permissions
 grant all on public.card_designs to authenticated;
 grant all on public.card_designs to service_role;
@@ -57,4 +61,3 @@ grant all on public.card_designs to anon; -- allow public read of designs (image
 
 grant all on public.user_designs to authenticated;
 grant all on public.user_designs to service_role;
-
