@@ -25,31 +25,40 @@ alter table public.user_designs enable row level security;
 -- 4. Policies
 
 -- Card Designs: Everyone can read, Authenticated (Admin) can insert/update/delete
+drop policy if exists "Anyone can view card designs" on public.card_designs;
 create policy "Anyone can view card designs"
   on public.card_designs for select
   using ( true );
 
+drop policy if exists "Authenticated users can insert card designs" on public.card_designs;
 create policy "Authenticated users can insert card designs"
   on public.card_designs for insert
   with check ( auth.role() = 'authenticated' );
 
+drop policy if exists "Authenticated users can update card designs" on public.card_designs;
 create policy "Authenticated users can update card designs"
   on public.card_designs for update
   using ( auth.role() = 'authenticated' );
 
+drop policy if exists "Authenticated users can delete card designs" on public.card_designs;
 create policy "Authenticated users can delete card designs"
   on public.card_designs for delete
   using ( auth.role() = 'authenticated' );
 
 -- User Designs: Users can view their own, Authenticated (Admin) can insert/update for users
+drop policy if exists "Users can view their own designs" on public.user_designs;
 create policy "Users can view their own designs"
   on public.user_designs for select
   using ( auth.uid() = user_id );
 
+-- Allow authenticated users (Admins) to insert for ANY user
+drop policy if exists "Authenticated users can insert user designs" on public.user_designs;
 create policy "Authenticated users can insert user designs"
   on public.user_designs for insert
   with check ( auth.role() = 'authenticated' );
 
+-- Allow authenticated users (Admins) to update for ANY user (Required for Upsert/Sync)
+drop policy if exists "Authenticated users can update user designs" on public.user_designs;
 create policy "Authenticated users can update user designs"
   on public.user_designs for update
   using ( auth.role() = 'authenticated' );
