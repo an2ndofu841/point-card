@@ -4,7 +4,7 @@ export interface IdolGroup {
   id: number; // manually assigned or synced from server
   name: string;
   themeColor: string;
-  logoUrl?: string;
+  logoUrl?: string; // Add logoUrl to IdolGroup
 }
 
 export interface UserMembership {
