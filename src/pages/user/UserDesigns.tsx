@@ -31,21 +31,40 @@ export const UserDesigns = () => {
           setIsLoading(true);
 
           try {
-              const { data, error } = await supabase
+              // Fetch User Designs (Ownership)
+              const { data: userDesignsData, error: userDesignsError } = await supabase
                 .from('user_designs')
                 .select('*')
                 .eq('user_id', userId)
                 .eq('group_id', selectedGroupId);
     
-              if (error) {
-                  console.error("Failed to fetch user designs", error);
-              } else if (data && data.length > 0) {
-                  await db.userDesigns.bulkPut(data.map(ud => ({
+              if (userDesignsError) {
+                  console.error("Failed to fetch user designs", userDesignsError);
+              } else if (userDesignsData && userDesignsData.length > 0) {
+                  await db.userDesigns.bulkPut(userDesignsData.map(ud => ({
                       id: ud.id,
                       userId: ud.user_id,
                       groupId: ud.group_id,
                       designId: ud.design_id,
                       acquiredAt: new Date(ud.acquired_at).getTime()
+                  })));
+              }
+
+              // Fetch Card Designs (Metadata) - Essential for display!
+              const { data: cardDesignsData, error: cardDesignsError } = await supabase
+                .from('card_designs')
+                .select('*')
+                .eq('group_id', selectedGroupId);
+
+              if (cardDesignsError) {
+                  console.error("Failed to fetch card designs", cardDesignsError);
+              } else if (cardDesignsData && cardDesignsData.length > 0) {
+                  await db.cardDesigns.bulkPut(cardDesignsData.map(cd => ({
+                      id: cd.id,
+                      groupId: cd.group_id,
+                      name: cd.name,
+                      imageUrl: cd.image_url,
+                      themeColor: cd.theme_color
                   })));
               }
           } catch (err) {
