@@ -46,10 +46,18 @@ create policy "Authenticated users can delete card designs"
   using ( auth.role() = 'authenticated' );
 
 -- User Designs: Users can view their own, Authenticated (Admin) can insert/update for users
+
+-- Allow users to view their own designs
 drop policy if exists "Users can view their own designs" on public.user_designs;
 create policy "Users can view their own designs"
   on public.user_designs for select
   using ( auth.uid() = user_id );
+
+-- Allow authenticated users (Admins) to view ALL user designs (Required for Sync/Upsert and Returning after Insert)
+drop policy if exists "Authenticated users can view all user designs" on public.user_designs;
+create policy "Authenticated users can view all user designs"
+  on public.user_designs for select
+  using ( auth.role() = 'authenticated' );
 
 -- Allow authenticated users (Admins) to insert for ANY user
 drop policy if exists "Authenticated users can insert user designs" on public.user_designs;
