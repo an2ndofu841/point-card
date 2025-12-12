@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -7,13 +7,6 @@ import { ArrowLeft, Clock, Gift } from 'lucide-react';
 export const UserHistory = () => {
   const navigate = useNavigate();
   const { userId } = useCurrentUser();
-
-  const history = useLiveQuery(() => 
-    userId ? db.pointHistory
-      .where('userId').equals(userId)
-      .reverse()
-      .sortBy('timestamp') : []
-  , [userId]);
 
   // Combine point history and used tickets
   const ticketHistory = useLiveQuery(() => 
