@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type IdolGroup } from '../../lib/db';
-import { supabase } from '../../lib/supabase';
-import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2 } from 'lucide-react';
+import { supabase, isMock } from '../../lib/supabase';
+import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const GroupManagement = () => {
   const groups = useLiveQuery(() => db.groups.toArray());
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   // Form Data
   const [formData, setFormData] = useState<Partial<IdolGroup>>({
@@ -20,32 +21,79 @@ export const GroupManagement = () => {
 
   const [showQR, setShowQR] = useState<number | null>(null); // ID of group to show QR for
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    setIsUploading(true);
+
+    try {
+      if (isMock) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setFormData({ ...formData, logoUrl: ev.target?.result as string });
+          setIsUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `group-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('logos').getPublicUrl(filePath);
+      setFormData({ ...formData, logoUrl: data.publicUrl });
+
+    } catch (error) {
+      console.error('Error uploading logo:', error);
+      alert('ロゴのアップロードに失敗しました');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name) return;
     setIsSaving(true);
 
     try {
-      // 1. Save to Supabase first to get ID
-      const { data, error } = await supabase
-        .from('groups')
-        .insert({
+      if (isMock) {
+          // Local Only Mock
+          await db.groups.add({
             name: formData.name,
-            theme_color: formData.themeColor || '#2563EB',
-            logo_url: formData.logoUrl
-        })
-        .select()
-        .single();
+            themeColor: formData.themeColor || '#2563EB',
+            logoUrl: formData.logoUrl
+          } as any);
+      } else {
+          // 1. Save to Supabase first to get ID
+          const { data, error } = await supabase
+            .from('groups')
+            .insert({
+                name: formData.name,
+                theme_color: formData.themeColor || '#2563EB',
+                logo_url: formData.logoUrl
+            })
+            .select()
+            .single();
 
-      if (error) throw error;
-      if (!data) throw new Error('No data returned from Supabase');
+          if (error) throw error;
+          if (!data) throw new Error('No data returned from Supabase');
 
-      // 2. Save to Local DB with returned ID
-      await db.groups.add({
-        id: data.id,
-        name: data.name,
-        themeColor: data.theme_color,
-        logoUrl: data.logo_url
-      });
+          // 2. Save to Local DB with returned ID
+          await db.groups.add({
+            id: data.id,
+            name: data.name,
+            themeColor: data.theme_color,
+            logoUrl: data.logo_url
+          });
+      }
 
       setIsEditing(false);
       setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
@@ -125,15 +173,33 @@ export const GroupManagement = () => {
               </div>
             </div>
             
-             <div>
-              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-1">ロゴURL (任意)</label>
-              <input
-                type="text"
-                value={formData.logoUrl}
-                onChange={e => setFormData({...formData, logoUrl: e.target.value})}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-mono text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                placeholder="https://..."
-              />
+            <div>
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-1">ロゴ (任意)</label>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden relative">
+                  {formData.logoUrl ? (
+                    <img src={formData.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-gray-300 text-xs">No Img</span>
+                  )}
+                  {isUploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="animate-spin text-white" size={20} />
+                    </div>
+                  )}
+                </div>
+                <label className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:bg-gray-50 transition flex items-center gap-2">
+                  <Camera size={16} />
+                  画像を選択
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
