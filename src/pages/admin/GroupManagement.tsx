@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type IdolGroup } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera } from 'lucide-react';
+import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera, Edit } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const GroupManagement = () => {
   const groups = useLiveQuery(() => db.groups.toArray());
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   
@@ -65,37 +66,68 @@ export const GroupManagement = () => {
 
     try {
       if (isMock) {
-          // Local Only Mock
-          await db.groups.add({
-            name: formData.name,
-            themeColor: formData.themeColor || '#2563EB',
-            logoUrl: formData.logoUrl
-          } as any);
-      } else {
-          // 1. Save to Supabase first to get ID
-          const { data, error } = await supabase
-            .from('groups')
-            .insert({
+          if (editingGroupId) {
+            // Local Update Mock
+            await db.groups.update(editingGroupId, {
                 name: formData.name,
-                theme_color: formData.themeColor || '#2563EB',
-                logo_url: formData.logoUrl
-            })
-            .select()
-            .single();
+                themeColor: formData.themeColor || '#2563EB',
+                logoUrl: formData.logoUrl
+            });
+          } else {
+            // Local Create Mock
+            await db.groups.add({
+                name: formData.name,
+                themeColor: formData.themeColor || '#2563EB',
+                logoUrl: formData.logoUrl
+            } as any);
+          }
+      } else {
+          if (editingGroupId) {
+            // Update Supabase
+            const { error } = await supabase
+                .from('groups')
+                .update({
+                    name: formData.name,
+                    theme_color: formData.themeColor || '#2563EB',
+                    logo_url: formData.logoUrl
+                })
+                .eq('id', editingGroupId);
+            
+            if (error) throw error;
 
-          if (error) throw error;
-          if (!data) throw new Error('No data returned from Supabase');
+            // Update Dexie
+            await db.groups.update(editingGroupId, {
+                name: formData.name,
+                themeColor: formData.themeColor,
+                logoUrl: formData.logoUrl
+            });
+          } else {
+            // 1. Save to Supabase first to get ID
+            const { data, error } = await supabase
+                .from('groups')
+                .insert({
+                    name: formData.name,
+                    theme_color: formData.themeColor || '#2563EB',
+                    logo_url: formData.logoUrl
+                })
+                .select()
+                .single();
 
-          // 2. Save to Local DB with returned ID
-          await db.groups.add({
-            id: data.id,
-            name: data.name,
-            themeColor: data.theme_color,
-            logoUrl: data.logo_url
-          });
+            if (error) throw error;
+            if (!data) throw new Error('No data returned from Supabase');
+
+            // 2. Save to Local DB with returned ID
+            await db.groups.add({
+                id: data.id,
+                name: data.name,
+                themeColor: data.theme_color,
+                logoUrl: data.logo_url
+            });
+          }
       }
 
       setIsEditing(false);
+      setEditingGroupId(null);
       setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
     } catch (err) {
       console.error("Failed to save group", err);
@@ -104,6 +136,17 @@ export const GroupManagement = () => {
       setIsSaving(false);
     }
   };
+
+  const handleEdit = (group: IdolGroup) => {
+    setFormData({
+        name: group.name,
+        themeColor: group.themeColor,
+        logoUrl: group.logoUrl
+    });
+    setEditingGroupId(group.id!);
+    setIsEditing(true);
+  };
+
 
   const handleDelete = async (id: number) => {
     if (window.confirm("このグループを削除してもよろしいですか？\n※注意: 関連するユーザーデータとの整合性が取れなくなる可能性があります。")) {
@@ -133,7 +176,11 @@ export const GroupManagement = () => {
         </div>
         {!isEditing && (
           <button 
-            onClick={() => setIsEditing(true)} 
+            onClick={() => {
+                setEditingGroupId(null);
+                setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
+                setIsEditing(true);
+            }} 
             className="bg-primary hover:bg-primary-dark text-white p-3 rounded-full shadow-lg shadow-blue-500/30 transition active:scale-95"
           >
             <Plus size={24} />
@@ -145,7 +192,7 @@ export const GroupManagement = () => {
         <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-100 animate-slide-up max-w-lg mx-auto">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
             <Users size={20} />
-            新規グループ作成
+            {editingGroupId ? 'グループ情報を編集' : '新規グループ作成'}
           </h2>
           
           <div className="space-y-5">
@@ -205,7 +252,11 @@ export const GroupManagement = () => {
 
           <div className="flex gap-3 mt-8">
             <button 
-              onClick={() => setIsEditing(false)}
+              onClick={() => {
+                  setIsEditing(false);
+                  setEditingGroupId(null);
+                  setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
+              }}
               className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"
             >
               キャンセル
@@ -237,14 +288,22 @@ export const GroupManagement = () => {
                    </div>
                  </div>
                  
-                 {group.id !== 1 && ( // Prevent deleting default group
-                    <button 
-                        onClick={() => handleDelete(group.id)}
-                        className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition"
-                    >
-                        <Trash2 size={18} />
-                    </button>
-                 )}
+                 <div className="flex items-center gap-2">
+                   <button 
+                       onClick={() => handleEdit(group)}
+                       className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-blue-50 hover:text-blue-500 transition"
+                   >
+                       <Edit size={18} />
+                   </button>
+                   {group.id !== 1 && ( // Prevent deleting default group
+                      <button 
+                          onClick={() => handleDelete(group.id)}
+                          className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition"
+                      >
+                          <Trash2 size={18} />
+                      </button>
+                   )}
+                 </div>
                </div>
                
                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
