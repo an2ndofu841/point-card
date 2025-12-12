@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type UserTicket } from '../../lib/db';
