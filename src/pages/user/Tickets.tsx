@@ -130,6 +130,14 @@ export const UserTickets = () => {
         <h1 className="text-xl font-bold">マイチケット</h1>
       </div>
 
+      {/* History Link */}
+      <div className="mb-6 flex justify-end">
+        <Link to="/user/history" className="text-xs font-bold text-primary hover:text-primary-dark flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-full transition">
+            <Clock size={12} />
+            使用履歴を見る
+        </Link>
+      </div>
+
       {/* Ticket List */}
       <div className="space-y-4">
         {tickets?.length === 0 && (

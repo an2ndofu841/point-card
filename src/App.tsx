@@ -9,7 +9,7 @@ import { GiftExchange } from './pages/user/GiftExchange';
 import { UserTickets } from './pages/user/Tickets';
 import { UserSettings } from './pages/user/Settings';
 import { UserDesigns } from './pages/user/UserDesigns';
-import { UserHistory } from './pages/user/History'; // Import UserHistory
+import { UserHistory } from './pages/user/UserHistory'; // Updated import path
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
