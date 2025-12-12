@@ -110,8 +110,20 @@ export const UserDesigns = () => {
   , [userId, groupId]);
   
   const handleSelect = async (designId?: number) => {
-    if (!membership?.id) return;
+    if (!membership?.id || !userId || !groupId) return;
+    
+    // 1. Update Local DB
     await db.userMemberships.update(membership.id, { selectedDesignId: designId });
+
+    // 2. Update Supabase
+    if (!isMock) {
+        if (designId === undefined) {
+             // If reverting to default (null)
+             await supabase.rpc('set_selected_design', { p_group_id: groupId, p_design_id: null });
+        } else {
+             await supabase.rpc('set_selected_design', { p_group_id: groupId, p_design_id: designId });
+        }
+    }
   };
 
   // Helper to determine background style properties

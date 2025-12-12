@@ -126,19 +126,18 @@ export const UserHome = () => {
                             points: rm.points || 0,
                             totalPoints: rm.total_points || 0,
                             currentRank: rm.current_rank || 'REGULAR',
-                            selectedDesignId: undefined,
+                            selectedDesignId: rm.selected_design_id, // Sync selected design
                             lastUpdated: Date.now()
                         });
                     } else {
-                        // Update local if server has newer data OR different points
+                        // Update local if server has newer data OR different points OR different design
                         // Since server is source of truth for points granted by admin, we trust server points here.
-                        // However, we should be careful not to overwrite local changes if offline mode is a thing, 
-                        // but for now assuming admin grants are primary source of point changes.
-                        if (exists.points !== rm.points || exists.totalPoints !== rm.total_points) {
+                        if (exists.points !== rm.points || exists.totalPoints !== rm.total_points || exists.selectedDesignId !== rm.selected_design_id) {
                              await db.userMemberships.update(exists.id!, {
                                 points: rm.points || 0,
                                 totalPoints: rm.total_points || 0,
                                 currentRank: rm.current_rank || 'REGULAR',
+                                selectedDesignId: rm.selected_design_id, // Sync selected design
                                 lastUpdated: Date.now()
                             });
                         }
