@@ -125,7 +125,8 @@ export const UserDesigns = () => {
             .from('user_memberships')
             .update(updates)
             .eq('user_id', userId)
-            .eq('group_id', groupId);
+            .eq('group_id', groupId)
+            .select(); // Important: Add select() to return the updated row, verifying the update worked
 
         if (error) {
             console.error("Failed to update selected design on server", error);
