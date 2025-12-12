@@ -19,7 +19,8 @@ export const UserHome = () => {
     const cache = await db.userCache.get(userId);
     // Return cache if it exists and has a name.
     if (cache?.name) return cache;
-    return cache || { id: userId, name: undefined }; 
+    // Fallback object needs to match UserCache interface to avoid TS errors
+    return cache || { id: userId, name: undefined, avatarUrl: undefined } as unknown as import('../../lib/db').UserCache; 
   }, [userId]);
   
   // Sync profile in useEffect to avoid loop
