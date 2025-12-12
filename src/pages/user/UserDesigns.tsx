@@ -12,6 +12,8 @@ export const UserDesigns = () => {
   const location = useLocation();
   const stateGroupId = location.state?.groupId as number | undefined;
 
+  const [isLoading, setIsLoading] = useState(true);
+
   const memberships = useLiveQuery(() => 
     userId ? db.userMemberships.where('userId').equals(userId).toArray() : []
   , [userId]);
@@ -21,27 +23,35 @@ export const UserDesigns = () => {
   // Sync user designs from Supabase on mount (or when group changes)
   useEffect(() => {
       const syncUserDesigns = async () => {
-          if (isMock || !userId || !selectedGroupId) return;
-
-          const { data, error } = await supabase
-            .from('user_designs')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('group_id', selectedGroupId);
-
-          if (error) {
-              console.error("Failed to fetch user designs", error);
+          if (isMock || !userId || !selectedGroupId) {
+              if (userId) setIsLoading(false); // Stop loading if only waiting for group
               return;
           }
 
-          if (data && data.length > 0) {
-              await db.userDesigns.bulkPut(data.map(ud => ({
-                  id: ud.id, // Optional if auto-increment, but good for sync
-                  userId: ud.user_id,
-                  groupId: ud.group_id,
-                  designId: ud.design_id,
-                  acquiredAt: new Date(ud.acquired_at).getTime()
-              })));
+          setIsLoading(true);
+
+          try {
+              const { data, error } = await supabase
+                .from('user_designs')
+                .select('*')
+                .eq('user_id', userId)
+                .eq('group_id', selectedGroupId);
+    
+              if (error) {
+                  console.error("Failed to fetch user designs", error);
+              } else if (data && data.length > 0) {
+                  await db.userDesigns.bulkPut(data.map(ud => ({
+                      id: ud.id,
+                      userId: ud.user_id,
+                      groupId: ud.group_id,
+                      designId: ud.design_id,
+                      acquiredAt: new Date(ud.acquired_at).getTime()
+                  })));
+              }
+          } catch (err) {
+              console.error(err);
+          } finally {
+              setIsLoading(false);
           }
       };
       syncUserDesigns();
@@ -99,7 +109,7 @@ export const UserDesigns = () => {
     };
   };
 
-  if (!userId) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto" /></div>;
+  if (!userId || isLoading) return <div className="min-h-screen flex items-center justify-center bg-bg-main"><Loader2 className="animate-spin text-primary" size={40} /></div>;
 
   // If no group selected yet (and user has memberships), show selector
   if (!groupId) {
