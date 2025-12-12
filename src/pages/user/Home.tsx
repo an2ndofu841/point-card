@@ -172,7 +172,27 @@ export const UserHome = () => {
   const designId = membership?.selectedDesignId;
   const currentDesign = useLiveQuery(async () => {
     if (!designId) return undefined;
-    return await db.cardDesigns.get(designId);
+    
+    // Check if design exists in Dexie
+    let design = await db.cardDesigns.get(designId);
+    
+    // If missing but we have an ID (e.g. after fresh login/clear cache), try to fetch from Supabase
+    if (!design && !isMock) {
+        const { data } = await supabase.from('card_designs').select('*').eq('id', designId).single();
+        if (data) {
+            design = {
+                id: data.id,
+                groupId: data.group_id,
+                name: data.name,
+                imageUrl: data.image_url,
+                themeColor: data.theme_color
+            };
+            // Cache it
+            await db.cardDesigns.put(design);
+        }
+    }
+    
+    return design;
   }, [designId]);
 
   useEffect(() => {
