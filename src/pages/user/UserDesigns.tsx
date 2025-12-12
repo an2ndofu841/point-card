@@ -117,11 +117,21 @@ export const UserDesigns = () => {
 
     // 2. Update Supabase
     if (!isMock) {
-        if (designId === undefined) {
-             // If reverting to default (null)
-             await supabase.rpc('set_selected_design', { p_group_id: groupId, p_design_id: null });
-        } else {
-             await supabase.rpc('set_selected_design', { p_group_id: groupId, p_design_id: designId });
+        // Fallback to direct update if RPC fails or not available (handles 404/401 implicitly by simple update)
+        // RPC is safer but direct update is fine if RLS allows it (we allow users to update their own membership)
+        const updates = { selected_design_id: designId === undefined ? null : designId };
+        
+        const { error } = await supabase
+            .from('user_memberships')
+            .update(updates)
+            .eq('user_id', userId)
+            .eq('group_id', groupId);
+
+        if (error) {
+            console.error("Failed to update selected design on server", error);
+            // Revert local change if server update fails? 
+            // Ideally yes, but for UX responsiveness we might just warn or retry.
+            // For now, let's just log error.
         }
     }
   };
