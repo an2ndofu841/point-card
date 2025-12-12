@@ -33,6 +33,7 @@ export interface PendingScan {
 export interface UserCache {
   id: string; 
   name?: string; // Keep name as global profile
+  avatarUrl?: string; // Add avatarUrl
   // Points are now in UserMembership, but keep these for backward compatibility or "Default Group"
   points?: number;
   totalPoints?: number; 

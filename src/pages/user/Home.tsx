@@ -32,12 +32,23 @@ export const UserHome = () => {
 
           // Fetch from Supabase
           const { data } = await supabase.auth.getUser();
-          if (data?.user?.user_metadata?.display_name) {
-            const name = data.user.user_metadata.display_name;
-            if (cache) {
-                await db.userCache.update(userId, { name, lastUpdated: Date.now() });
-            } else {
-                await db.userCache.put({ id: userId, name, lastUpdated: Date.now() });
+          if (data?.user?.user_metadata) {
+            const { display_name, avatar_url } = data.user.user_metadata;
+            if (display_name || avatar_url) {
+                if (cache) {
+                    await db.userCache.update(userId, { 
+                        name: display_name || cache.name, 
+                        avatarUrl: avatar_url || cache.avatarUrl,
+                        lastUpdated: Date.now() 
+                    });
+                } else {
+                    await db.userCache.put({ 
+                        id: userId, 
+                        name: display_name, 
+                        avatarUrl: avatar_url,
+                        lastUpdated: Date.now() 
+                    });
+                }
             }
           }
       };
@@ -254,7 +265,9 @@ export const UserHome = () => {
          <div className="flex justify-between items-center mb-6 relative z-10">
            <div className="flex items-center gap-3">
              <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center border border-gray-200 overflow-hidden">
-                {activeGroup?.logoUrl ? (
+                {userProfile?.avatarUrl ? (
+                    <img src={userProfile.avatarUrl} className="w-full h-full object-cover" alt="avatar" />
+                ) : activeGroup?.logoUrl ? (
                     <img src={activeGroup.logoUrl} className="w-full h-full object-cover" alt="logo" />
                 ) : (
                     <User size={20} className="text-gray-500" />

@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
-import { ArrowLeft, Save, User, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, User, Loader2, Camera } from 'lucide-react';
 
 export const ProfileEdit = () => {
   const navigate = useNavigate();
@@ -14,14 +14,56 @@ export const ProfileEdit = () => {
   const userCache = useLiveQuery(() => userId ? db.userCache.get(userId) : undefined, [userId]);
   
   const [name, setName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   // Initialize form with existing data
   useEffect(() => {
     if (userCache) {
       setName(userCache.name || '');
+      setAvatarUrl(userCache.avatarUrl || null);
     }
   }, [userCache]);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !userId) return;
+    
+    const file = e.target.files[0];
+    setUploading(true);
+
+    try {
+      if (isMock) {
+        // Mock upload: use FileReader to get base64
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setAvatarUrl(ev.target?.result as string);
+          setUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      setAvatarUrl(data.publicUrl);
+
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('画像のアップロードに失敗しました');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,12 +77,14 @@ export const ProfileEdit = () => {
       if (exists) {
         await db.userCache.update(userId, {
           name: name,
+          avatarUrl: avatarUrl || undefined,
           lastUpdated: Date.now()
         });
       } else {
         await db.userCache.put({
           id: userId,
           name: name,
+          avatarUrl: avatarUrl || undefined,
           lastUpdated: Date.now()
         });
       }
@@ -48,12 +92,14 @@ export const ProfileEdit = () => {
       // 2. Sync to Supabase (if not mock)
       if (!isMock) {
          const { error } = await supabase.auth.updateUser({
-           data: { display_name: name }
+           data: { 
+             display_name: name,
+             avatar_url: avatarUrl
+           }
          });
          
          if (error) {
              console.error("Failed to sync profile to Supabase", error);
-             // We don't block UI for this, but logging it is good
          }
       }
       
@@ -79,8 +125,29 @@ export const ProfileEdit = () => {
 
       <div className="max-w-md mx-auto">
         <div className="bg-white p-8 rounded-3xl shadow-xl border border-gray-100">
-           <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-md">
-             <User size={48} className="text-gray-400" />
+           
+           <div className="flex flex-col items-center mb-6 relative">
+             <div className="relative">
+               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center border-4 border-white shadow-md overflow-hidden">
+                 {avatarUrl ? (
+                   <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                 ) : (
+                   <User size={48} className="text-gray-400" />
+                 )}
+               </div>
+               <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer hover:bg-primary-dark transition shadow-md">
+                 {uploading ? <Loader2 size={16} className="animate-spin" /> : <Camera size={16} />}
+               </label>
+               <input 
+                 id="avatar-upload" 
+                 type="file" 
+                 accept="image/*" 
+                 className="hidden" 
+                 onChange={handleImageUpload}
+                 disabled={uploading}
+               />
+             </div>
+             <p className="text-xs text-gray-400 mt-2">アイコンをタップして変更</p>
            </div>
            
            <form onSubmit={handleSave} className="space-y-6">
@@ -99,7 +166,7 @@ export const ProfileEdit = () => {
 
              <button
                type="submit"
-               disabled={loading}
+               disabled={loading || uploading}
                className="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition shadow-lg shadow-blue-500/25 disabled:opacity-50 flex items-center justify-center gap-2"
              >
                {loading ? <Loader2 className="animate-spin" /> : <><Save size={20} /> 保存する</>}
