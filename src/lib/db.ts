@@ -78,6 +78,7 @@ export interface CardDesign {
   name: string;
   imageUrl: string; 
   themeColor: string; 
+  theme_color?: string; // For compatibility with Supabase
 }
 
 export interface UserDesign {
@@ -180,6 +181,20 @@ db.version(8).stores({
   await tx.table('cardDesigns').toCollection().modify(d => d.groupId = defaultGroupId);
   await tx.table('userDesigns').toCollection().modify(d => d.groupId = defaultGroupId);
   await tx.table('pendingScans').toCollection().modify(s => s.groupId = defaultGroupId);
+});
+
+// Try to open safely
+db.open().catch(async err => {
+    console.error(`Failed to open db: ${err.stack || err}`);
+    if (err.name === 'UnknownError' || err.name === 'VersionError' || err.name === 'DatabaseClosedError') {
+       console.warn('Database error detected. Attempting recovery by deleting database...');
+       try {
+         await Dexie.delete('CFPointCardDB');
+         window.location.reload();
+       } catch (e) {
+         console.error('Failed to delete database', e);
+       }
+    }
 });
 
 export { db };

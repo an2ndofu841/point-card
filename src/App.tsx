@@ -22,8 +22,11 @@ import { ManageDesigns } from './pages/admin/DesignConfig';
 import { GroupManagement } from './pages/admin/GroupManagement';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
+import { useSyncGroups } from './hooks/useSyncGroups';
 
 function App() {
+  useSyncGroups(); // Sync groups on app load
+
   return (
     <Routes>
       <Route path="/" element={<Landing />} />
