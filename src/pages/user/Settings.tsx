@@ -16,8 +16,6 @@ export const UserSettings = () => {
   const handleClearData = async () => {
     if (window.confirm('【デバッグ用】ローカルデータを全削除しますか？\n※ポイントやチケット情報もリセットされます')) {
       await db.delete();
-      await db.open();
-      alert('データを削除しました。再読み込みします。');
       window.location.reload();
     }
   };

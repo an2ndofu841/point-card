@@ -89,7 +89,8 @@ export interface UserDesign {
   acquiredAt: number;
 }
 
-const db = new Dexie('CFPointCardDB') as Dexie & {
+// Use a new database name to force fresh start if v1 is corrupted
+const db = new Dexie('CFPointCardDB_v2') as Dexie & {
   pendingScans: EntityTable<PendingScan, 'id'>;
   userCache: EntityTable<UserCache, 'id'>;
   gifts: EntityTable<Gift, 'id'>;
@@ -202,7 +203,7 @@ db.open().catch(async err => {
            try {
              // Important: Close the current instance before deleting, otherwise it might block deletion
              db.close(); 
-             await Dexie.delete('CFPointCardDB');
+             await Dexie.delete('CFPointCardDB_v2');
              window.location.reload();
            } catch (e) {
              console.error('Failed to delete database', e);
