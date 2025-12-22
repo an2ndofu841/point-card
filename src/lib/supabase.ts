@@ -22,8 +22,13 @@ export const checkSupabaseConnection = async (): Promise<boolean> => {
     if (isMock) return true;
     try {
         const { error } = await supabase.from('groups').select('count', { count: 'exact', head: true });
-        return !error;
-    } catch {
+        if (error) {
+            console.error('Supabase connection check failed:', error);
+            return false;
+        }
+        return true;
+    } catch (e) {
+        console.error('Supabase connection check exception:', e);
         return false;
     }
 };

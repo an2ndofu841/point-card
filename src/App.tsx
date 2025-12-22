@@ -29,15 +29,19 @@ import { AlertTriangle } from 'lucide-react';
 
 // Simple Error Banner Component
 const DbErrorBanner = () => {
-  const [show, setShow] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
 
   useEffect(() => {
-    const handler = () => setShow(true);
+    const handler = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        const err = customEvent.detail;
+        setErrorDetails(err?.message || 'Unknown Error');
+    };
     window.addEventListener(DB_ERROR_EVENT, handler);
     return () => window.removeEventListener(DB_ERROR_EVENT, handler);
   }, []);
 
-  if (!show) return null;
+  if (!errorDetails) return null;
 
   return (
     <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-start gap-3 shadow-lg animate-fade-in">
@@ -46,12 +50,13 @@ const DbErrorBanner = () => {
         <h3 className="font-bold">データの読み込みに失敗しました</h3>
         <p className="text-sm mt-1">
           サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。
-          <br />以下の対処をお試しください：
+          <br />エラー詳細: <span className="font-mono bg-red-700 px-1 rounded">{errorDetails}</span>
         </p>
-        <ul className="text-sm list-disc list-inside mt-2 space-y-1">
+        <p className="text-sm mt-2">以下の対処をお試しください：</p>
+        <ul className="text-sm list-disc list-inside mt-1 space-y-1">
             <li>ページを再読み込みする</li>
             <li>ブラウザのキャッシュをクリアする</li>
-            <li>（管理者向け）サーバーの状態を確認する</li>
+            <li>（管理者向け）Supabaseプロジェクトの状態を確認する</li>
         </ul>
         <button 
             onClick={() => window.location.reload()} 
