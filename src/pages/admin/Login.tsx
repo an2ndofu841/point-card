@@ -37,15 +37,14 @@ export const AdminLogin = () => {
 
       if (error) throw error;
 
-      // 本来はここでroleチェックを行う (user_metadataなど)
-      // 今回は簡易的にログインできればOKとするが、
-      // admin以外のユーザーがログインした場合は弾くロジックを追加するとなお良し
-      /*
+      // 権限チェック: メタデータのroleが'admin' または メールアドレスに'admin'が含まれる場合のみ許可
       const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata?.role !== 'admin') {
+      const isAdmin = user?.user_metadata?.role === 'admin' || user?.email?.includes('admin');
+      
+      if (!isAdmin) {
+         await supabase.auth.signOut();
          throw new Error("運営者権限がありません");
       }
-      */
 
       if (data.user) {
          navigate('/admin/dashboard');
