@@ -200,6 +200,8 @@ db.open().catch(async err => {
            console.warn(`Database error detected. Attempting recovery by deleting database... (Attempt ${retries + 1})`);
            sessionStorage.setItem(RETRY_KEY, (retries + 1).toString());
            try {
+             // Important: Close the current instance before deleting, otherwise it might block deletion
+             db.close(); 
              await Dexie.delete('CFPointCardDB');
              window.location.reload();
            } catch (e) {
