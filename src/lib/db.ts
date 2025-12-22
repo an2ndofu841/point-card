@@ -190,9 +190,18 @@ db.version(8).stores({
   await tx.table('pendingScans').toCollection().modify(s => s.groupId = defaultGroupId);
 });
 
+// Export event name
+export const DB_ERROR_EVENT = 'CF_POINT_CARD_DB_ERROR';
+
 // Try to open safely
 db.open().catch(async err => {
     console.error(`Failed to open db: ${err.stack || err}`);
+    
+    // Dispatch error event for UI handling
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(DB_ERROR_EVENT, { detail: err }));
+    }
+
     if (err.name === 'UnknownError' || err.name === 'VersionError' || err.name === 'DatabaseClosedError') {
        const RETRY_KEY = 'db_retry_count';
        const retries = parseInt(sessionStorage.getItem(RETRY_KEY) || '0');
