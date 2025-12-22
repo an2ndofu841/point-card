@@ -11,12 +11,6 @@ export const supabase = createClient(
   supabaseAnonKey || 'placeholder-key',
   {
     auth: {
-      // ロック機能の問題を回避するためのカスタムロック (Safari/Chromeの一部の環境対策)
-      lock: {
-        request: async (_name: string, _options: any, callback: () => any) => {
-          return await callback();
-        },
-      } as any,
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
