@@ -36,7 +36,9 @@ const DbErrorBanner = () => {
     const handler = (event: Event) => {
         const customEvent = event as CustomEvent;
         const err = customEvent.detail;
-        setErrorDetails(err?.message || JSON.stringify(err) || 'Unknown Error');
+        const message = err?.message || JSON.stringify(err) || 'Unknown Error';
+        // Only set if not already set or if it's a different error
+        setErrorDetails(prev => prev === message ? prev : message);
     };
     window.addEventListener(DB_ERROR_EVENT, handler);
     return () => window.removeEventListener(DB_ERROR_EVENT, handler);
@@ -44,13 +46,46 @@ const DbErrorBanner = () => {
 
   if (!errorDetails) return null;
 
+  const isStorageError = errorDetails.includes('UnknownError') || errorDetails.includes('Internal error') || errorDetails.includes('DatabaseClosedError');
+  const isNetworkError = errorDetails.includes('Network Error') || errorDetails.includes('Connection Failed');
+
+  let title = "データの読み込みに失敗しました";
+  let description = "サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。";
+  let actions = (
+    <ul className="text-sm list-disc list-inside mt-1 space-y-1">
+        <li>ページを再読み込みする</li>
+        <li>ブラウザのキャッシュをクリアする</li>
+    </ul>
+  );
+
+  if (isStorageError) {
+      title = "ブラウザの保存領域エラー";
+      description = "ブラウザのデータベース機能が利用できないか、破損しています。プライベートブラウジングを解除するか、ブラウザのデータを完全に削除してください。";
+      actions = (
+        <ul className="text-sm list-disc list-inside mt-1 space-y-1">
+            <li className="font-bold text-yellow-200">ブラウザの「閲覧履歴データの削除」を行う</li>
+            <li>プライベートモード/シークレットモードを解除する</li>
+            <li>別のブラウザを使用する</li>
+        </ul>
+      );
+  } else if (isNetworkError) {
+      title = "サーバー接続エラー";
+      description = "サーバーに接続できません。インターネット接続を確認するか、サーバーがメンテナンス中の可能性があります。";
+      actions = (
+        <ul className="text-sm list-disc list-inside mt-1 space-y-1">
+            <li>インターネット接続を確認する</li>
+            <li>Supabaseプロジェクトの状態を確認する</li>
+        </ul>
+      );
+  }
+
   return (
     <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-start gap-3 shadow-lg animate-fade-in text-left">
       <AlertTriangle className="flex-shrink-0 mt-0.5" />
       <div>
-        <h3 className="font-bold">データの読み込みに失敗しました</h3>
+        <h3 className="font-bold">{title}</h3>
         <p className="text-sm mt-1">
-          サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。
+          {description}
           <br />エラー詳細: <span className="font-mono bg-red-700 px-1 rounded break-all">{errorDetails}</span>
         </p>
         
@@ -59,12 +94,9 @@ const DbErrorBanner = () => {
            Configured URL: {debugUrl || 'Not Set'}
         </div>
 
-        <p className="text-sm mt-2">以下の対処をお試しください：</p>
-        <ul className="text-sm list-disc list-inside mt-1 space-y-1">
-            <li>Supabaseプロジェクトの設定（URL/Key）を確認する</li>
-            <li>ページを再読み込みする</li>
-            <li>ブラウザのキャッシュをクリアする</li>
-        </ul>
+        <p className="text-sm mt-2">推奨される対処：</p>
+        {actions}
+        
         <button 
             onClick={() => window.location.reload()} 
             className="mt-3 bg-white text-red-600 px-4 py-2 rounded text-sm font-bold shadow-sm active:scale-95 transition"
