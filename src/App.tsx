@@ -30,12 +30,13 @@ import { AlertTriangle } from 'lucide-react';
 // Simple Error Banner Component
 const DbErrorBanner = () => {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const debugUrl = import.meta.env.VITE_SUPABASE_URL;
 
   useEffect(() => {
     const handler = (event: Event) => {
         const customEvent = event as CustomEvent;
         const err = customEvent.detail;
-        setErrorDetails(err?.message || 'Unknown Error');
+        setErrorDetails(err?.message || JSON.stringify(err) || 'Unknown Error');
     };
     window.addEventListener(DB_ERROR_EVENT, handler);
     return () => window.removeEventListener(DB_ERROR_EVENT, handler);
@@ -44,19 +45,25 @@ const DbErrorBanner = () => {
   if (!errorDetails) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-start gap-3 shadow-lg animate-fade-in">
+    <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-start gap-3 shadow-lg animate-fade-in text-left">
       <AlertTriangle className="flex-shrink-0 mt-0.5" />
       <div>
         <h3 className="font-bold">データの読み込みに失敗しました</h3>
         <p className="text-sm mt-1">
           サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。
-          <br />エラー詳細: <span className="font-mono bg-red-700 px-1 rounded">{errorDetails}</span>
+          <br />エラー詳細: <span className="font-mono bg-red-700 px-1 rounded break-all">{errorDetails}</span>
         </p>
+        
+        {/* Debug Info */}
+        <div className="text-xs mt-2 p-2 bg-black/20 rounded font-mono break-all">
+           Configured URL: {debugUrl || 'Not Set'}
+        </div>
+
         <p className="text-sm mt-2">以下の対処をお試しください：</p>
         <ul className="text-sm list-disc list-inside mt-1 space-y-1">
+            <li>Supabaseプロジェクトの設定（URL/Key）を確認する</li>
             <li>ページを再読み込みする</li>
             <li>ブラウザのキャッシュをクリアする</li>
-            <li>（管理者向け）Supabaseプロジェクトの状態を確認する</li>
         </ul>
         <button 
             onClick={() => window.location.reload()} 
