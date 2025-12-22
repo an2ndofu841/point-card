@@ -30,3 +30,4 @@ grant all on public.user_memberships to service_role;
 -- 5. RLSの有効化確認
 alter table public.user_memberships enable row level security;
 
+

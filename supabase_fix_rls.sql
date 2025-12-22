@@ -51,3 +51,6 @@ ON public.point_history
 FOR INSERT 
 WITH CHECK (auth.role() = 'authenticated');
 
+
+
+

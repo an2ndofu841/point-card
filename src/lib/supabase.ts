@@ -8,5 +8,18 @@ export const isMock = !supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('
 
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
+  supabaseAnonKey || 'placeholder-key',
+  {
+    auth: {
+      // ロック機能の問題を回避するためのカスタムロック (Safari/Chromeの一部の環境対策)
+      lock: {
+        request: async (_name: string, _options: any, callback: () => any) => {
+          return await callback();
+        },
+      } as any,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
 );

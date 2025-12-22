@@ -28,3 +28,4 @@ create policy "Authenticated users can update logos."
   using ( bucket_id = 'logos' and auth.role() = 'authenticated' )
   with check ( bucket_id = 'logos' and auth.role() = 'authenticated' );
 
+

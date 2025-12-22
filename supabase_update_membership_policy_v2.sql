@@ -20,3 +20,4 @@ grant all on public.user_memberships to service_role;
 -- デザイン選択には user_memberships の更新が必要だが、念のため関連テーブルも許可
 alter table public.user_memberships enable row level security;
 
+

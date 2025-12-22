@@ -30,3 +30,6 @@ create policy "Users can update their own tickets"
 grant all on public.user_tickets to authenticated;
 grant all on public.user_tickets to service_role;
 
+
+
+

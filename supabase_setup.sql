@@ -31,3 +31,6 @@ create policy "Users can update their own memberships"
 grant all on public.user_memberships to authenticated;
 grant all on public.user_memberships to service_role;
 
+
+
+

@@ -17,3 +17,4 @@ create policy "Anyone can update their own avatar."
   using ( bucket_id = 'avatars' and auth.uid() = owner )
   with check ( bucket_id = 'avatars' and auth.uid() = owner );
 
+
