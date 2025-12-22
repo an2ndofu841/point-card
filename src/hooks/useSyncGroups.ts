@@ -18,12 +18,11 @@ export const useSyncGroups = () => {
         }
 
         // Check connection first
-        try {
-            await checkSupabaseConnection();
-        } catch (connErr: any) {
-            console.error("Supabase connection failed:", connErr);
-            // Dispatch error event to show banner with details
-            window.dispatchEvent(new CustomEvent(DB_ERROR_EVENT, { detail: connErr }));
+        const isConnected = await checkSupabaseConnection();
+        if (!isConnected) {
+            console.error("Supabase connection failed.");
+            // Dispatch error event to show banner
+            window.dispatchEvent(new CustomEvent(DB_ERROR_EVENT, { detail: new Error("Server Connection Failed") }));
             return;
         }
 
