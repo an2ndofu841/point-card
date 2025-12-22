@@ -160,19 +160,25 @@ db.version(8).stores({
   });
 
   // Migrate UserCache -> UserMembership
-  await tx.table('userCache').toCollection().modify(async user => {
+  // Use toArray() + loop instead of modify() with async callback to avoid Dexie/IndexedDB issues
+  const users = await tx.table('userCache').toArray();
+  for (const user of users) {
     if (user.points !== undefined) {
-       await tx.table('userMemberships').add({
-         userId: user.id,
-         groupId: defaultGroupId,
-         points: user.points,
-         totalPoints: user.totalPoints || user.points,
-         currentRank: user.rank,
-         selectedDesignId: user.selectedDesignId,
-         lastUpdated: Date.now()
-       });
+       // Check if already exists to be safe
+       const existing = await tx.table('userMemberships').where({ userId: user.id, groupId: defaultGroupId }).first();
+       if (!existing) {
+         await tx.table('userMemberships').add({
+           userId: user.id,
+           groupId: defaultGroupId,
+           points: user.points,
+           totalPoints: user.totalPoints || user.points,
+           currentRank: user.rank,
+           selectedDesignId: user.selectedDesignId,
+           lastUpdated: Date.now()
+         });
+       }
     }
-  });
+  }
 
   // Migrate other tables
   await tx.table('gifts').toCollection().modify(g => g.groupId = defaultGroupId);
@@ -187,13 +193,25 @@ db.version(8).stores({
 db.open().catch(async err => {
     console.error(`Failed to open db: ${err.stack || err}`);
     if (err.name === 'UnknownError' || err.name === 'VersionError' || err.name === 'DatabaseClosedError') {
-       console.warn('Database error detected. Attempting recovery by deleting database...');
-       try {
-         await Dexie.delete('CFPointCardDB');
-         window.location.reload();
-       } catch (e) {
-         console.error('Failed to delete database', e);
+       const RETRY_KEY = 'db_retry_count';
+       const retries = parseInt(sessionStorage.getItem(RETRY_KEY) || '0');
+       
+       if (retries < 2) { // Try twice
+           console.warn(`Database error detected. Attempting recovery by deleting database... (Attempt ${retries + 1})`);
+           sessionStorage.setItem(RETRY_KEY, (retries + 1).toString());
+           try {
+             await Dexie.delete('CFPointCardDB');
+             window.location.reload();
+           } catch (e) {
+             console.error('Failed to delete database', e);
+           }
+       } else {
+           console.error("Critical DB Error: Failed to recover after multiple attempts.");
+           // Optional: Show UI feedback here or let the app handle empty DB state
        }
+    } else {
+        // Clear retry count on other errors or success (logic here assumes open failure is the main issue)
+        sessionStorage.removeItem('db_retry_count'); 
     }
 });
 
