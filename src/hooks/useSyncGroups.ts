@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import { db } from '../lib/db';
-import { supabase, isMock } from '../lib/supabase';
+import { db, DB_ERROR_EVENT } from '../lib/db';
+import { supabase, isMock, checkSupabaseConnection } from '../lib/supabase';
 
 export const useSyncGroups = () => {
   useEffect(() => {
@@ -14,6 +14,15 @@ export const useSyncGroups = () => {
                     { id: 2, name: 'Mock Group 2', themeColor: '#10B981' }
                 ]);
             }
+            return;
+        }
+
+        // Check connection first
+        const isConnected = await checkSupabaseConnection();
+        if (!isConnected) {
+            console.error("Supabase connection failed. Project might be paused.");
+            // Dispatch error event to show banner
+            window.dispatchEvent(new CustomEvent(DB_ERROR_EVENT, { detail: new Error("Server Connection Failed") }));
             return;
         }
 

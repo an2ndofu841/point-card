@@ -45,13 +45,13 @@ const DbErrorBanner = () => {
       <div>
         <h3 className="font-bold">データの読み込みに失敗しました</h3>
         <p className="text-sm mt-1">
-          お使いのブラウザでデータベースが正常に動作していません。
+          サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。
           <br />以下の対処をお試しください：
         </p>
         <ul className="text-sm list-disc list-inside mt-2 space-y-1">
-            <li>ブラウザの再起動</li>
-            <li>キャッシュのクリア</li>
-            <li>プライベートモード（シークレットモード）の解除</li>
+            <li>ページを再読み込みする</li>
+            <li>ブラウザのキャッシュをクリアする</li>
+            <li>（管理者向け）サーバーの状態を確認する</li>
         </ul>
         <button 
             onClick={() => window.location.reload()} 

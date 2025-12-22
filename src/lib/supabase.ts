@@ -17,3 +17,13 @@ export const supabase = createClient(
     },
   }
 );
+
+export const checkSupabaseConnection = async (): Promise<boolean> => {
+    if (isMock) return true;
+    try {
+        const { error } = await supabase.from('groups').select('count', { count: 'exact', head: true });
+        return !error;
+    } catch {
+        return false;
+    }
+};
