@@ -40,25 +40,20 @@ const DbErrorBanner = () => {
   if (!show) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-start gap-3 shadow-lg animate-fade-in text-left">
-      <AlertTriangle className="flex-shrink-0 mt-0.5" />
-      <div>
-        <h3 className="font-bold">データの読み込みに失敗しました</h3>
-        <p className="text-sm mt-1">
-          サーバーへの接続、またはブラウザのデータベースでエラーが発生しています。
-        </p>
-        <p className="text-sm mt-2">以下の対処をお試しください：</p>
-        <ul className="text-sm list-disc list-inside mt-1 space-y-1">
-            <li>ページを再読み込みする</li>
-            <li>ブラウザのキャッシュをクリアする</li>
-        </ul>
-        <button 
-            onClick={() => window.location.reload()} 
-            className="mt-3 bg-white text-red-600 px-4 py-2 rounded text-sm font-bold shadow-sm active:scale-95 transition"
-        >
-            ページを再読み込み
-        </button>
+    <div className="fixed top-0 left-0 right-0 bg-red-600 text-white p-4 z-[9999] flex items-center justify-between gap-3 shadow-lg animate-fade-in text-left">
+      <div className="flex items-center gap-3">
+        <AlertTriangle className="flex-shrink-0" />
+        <div>
+          <h3 className="font-bold text-sm">データの読み込みに失敗しました</h3>
+          <p className="text-xs opacity-90">再読み込みするか、キャッシュを削除してください</p>
+        </div>
       </div>
+      <button 
+          onClick={() => window.location.reload()} 
+          className="bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded text-xs font-bold transition flex-shrink-0"
+      >
+          再読み込み
+      </button>
     </div>
   );
 };
