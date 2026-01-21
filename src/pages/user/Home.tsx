@@ -143,6 +143,14 @@ export const UserHome = () => {
   }, [visibleGroups, activeGroupId, savedGroupId]);
 
   useEffect(() => {
+    if (!visibleGroups || !savedGroupId) return;
+    if (!visibleGroups.find(g => g.id === savedGroupId)) return;
+    if (activeGroupId !== savedGroupId) {
+      setActiveGroupId(savedGroupId);
+    }
+  }, [visibleGroups, savedGroupId, activeGroupId]);
+
+  useEffect(() => {
     if (!userId) return;
     saveSelectedGroupId(userId, activeGroupId);
   }, [userId, activeGroupId]);

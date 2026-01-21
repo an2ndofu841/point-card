@@ -75,6 +75,14 @@ export const UserTrophies = () => {
   }, [groups, activeGroupId, savedGroupId]);
 
   useEffect(() => {
+    if (!groups || !savedGroupId) return;
+    if (!groups.find(g => g.id === savedGroupId)) return;
+    if (activeGroupId !== savedGroupId) {
+      setActiveGroupId(savedGroupId);
+    }
+  }, [groups, savedGroupId, activeGroupId]);
+
+  useEffect(() => {
     if (!userId) return;
     saveSelectedGroupId(userId, activeGroupId);
   }, [userId, activeGroupId]);
