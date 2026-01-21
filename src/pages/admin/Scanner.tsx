@@ -90,9 +90,9 @@ export const Scanner = () => {
       const now = Date.now();
       const age = now - ts;
       
-      // Modified: Allow old QRs (Screenshots)
+      // Allow old QRs (screenshots)
       let isOld = false;
-      if (age > 180000) { 
+      if (age > 180000) {
          isOld = true;
       }
       
