@@ -3,8 +3,20 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle, User } from 'lucide-react';
+import { ArrowLeft, RefreshCw, CheckCircle, AlertCircle, Ticket, AlertTriangle, User, CalendarDays } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
+
+type LiveEvent = {
+  id: number;
+  title: string;
+  start_at: string;
+  is_cancelled?: boolean;
+};
+
+type EventScanStatus = {
+  status: 'NOT_REGISTERED' | 'APPLY' | 'CHECKED_IN' | 'CANCELLED' | 'ERROR';
+  message?: string;
+};
 
 export const Scanner = () => {
   const [scanResult, setScanResult] = useState<{id: string, ts: number, action?: string, designId?: number, ticketId?: number, isOld?: boolean, userName?: string} | null>(null);
@@ -12,6 +24,11 @@ export const Scanner = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef(false);
+  const [scanMode, setScanMode] = useState<'points' | 'event'>('points');
+  const [events, setEvents] = useState<LiveEvent[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [eventStatus, setEventStatus] = useState<EventScanStatus | null>(null);
+  const [isCheckingEvent, setIsCheckingEvent] = useState(false);
 
   // Get current admin group context
   const [groupId] = useState<number>(() => {
@@ -76,6 +93,34 @@ export const Scanner = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const loadEvents = async () => {
+      if (isMock) {
+        setEvents([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('live_events')
+        .select('id, title, start_at, is_cancelled')
+        .eq('group_id', groupId)
+        .order('start_at', { ascending: true });
+
+      if (error) {
+        console.error('Failed to fetch live events', error);
+        return;
+      }
+
+      const fetched = (data || []) as LiveEvent[];
+      setEvents(fetched);
+      if (!selectedEventId && fetched.length > 0) {
+        setSelectedEventId(fetched[0].id);
+      }
+    };
+
+    loadEvents();
+  }, [groupId]);
+
   const handleScan = (text: string) => {
     try {
       // Decode Base64
@@ -126,10 +171,55 @@ export const Scanner = () => {
     setScanResult(null);
     setError(null);
     setSuccessMsg(null);
+    setEventStatus(null);
     if (scannerRef.current) {
       scannerRef.current.resume();
     }
   };
+
+  useEffect(() => {
+    const checkEventRegistration = async () => {
+      if (scanMode !== 'event' || !scanResult?.id) {
+        setEventStatus(null);
+        return;
+      }
+
+      if (!selectedEventId) {
+        setEventStatus({ status: 'ERROR', message: 'ライブを選択してください' });
+        return;
+      }
+
+      if (isMock) {
+        setEventStatus({ status: 'NOT_REGISTERED' });
+        return;
+      }
+
+      setIsCheckingEvent(true);
+      const { data, error } = await supabase
+        .from('live_event_registrations')
+        .select('*')
+        .eq('event_id', selectedEventId)
+        .eq('user_id', scanResult.id);
+
+      setIsCheckingEvent(false);
+
+      if (error) {
+        console.error('Failed to check registration', error);
+        setEventStatus({ status: 'ERROR', message: '参加状況の取得に失敗しました' });
+        return;
+      }
+
+      const registration = data && data.length > 0 ? data[0] : null;
+      if (!registration) {
+        setEventStatus({ status: 'NOT_REGISTERED' });
+        return;
+      }
+
+      setEventStatus({ status: registration.status });
+    };
+
+    checkEventRegistration();
+  }, [scanMode, scanResult, selectedEventId]);
 
   const grantPoints = async (points: number) => {
     if (!scanResult) return;
@@ -256,9 +346,41 @@ export const Scanner = () => {
     }
   };
 
+  const checkInEvent = async () => {
+    if (!scanResult?.id || !selectedEventId) return;
+    if (eventStatus?.status !== 'APPLY') {
+      setError('参加登録がないため、来場確認できません');
+      return;
+    }
+
+    try {
+      if (isMock) {
+        setSuccessMsg('来場確認を完了しました');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('live_event_registrations')
+        .update({
+          status: 'CHECKED_IN',
+          checked_in_at: new Date().toISOString()
+        })
+        .eq('event_id', selectedEventId)
+        .eq('user_id', scanResult.id);
+
+      if (error) throw error;
+
+      setEventStatus({ status: 'CHECKED_IN' });
+      setSuccessMsg('来場確認を完了しました');
+    } catch (err) {
+      console.error(err);
+      setError('来場確認に失敗しました');
+    }
+  };
+
   return (
     <div className="min-h-[100dvh] bg-black text-white flex flex-col font-sans">
-      <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-20">
+      <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-30">
         <Link to="/admin/dashboard" className="p-2 bg-white/10 rounded-full backdrop-blur-md">
           <ArrowLeft size={20} />
         </Link>
@@ -283,6 +405,44 @@ export const Scanner = () => {
             object-fit: cover !important;
           }
         `}</style>
+        {/* Mode Toggle */}
+        <div className="absolute top-16 left-0 right-0 z-20 px-4">
+          <div className="bg-black/50 backdrop-blur-md rounded-full p-1 flex gap-2 text-sm font-bold">
+            <button
+              onClick={() => setScanMode('points')}
+              className={`flex-1 py-2 rounded-full transition ${scanMode === 'points' ? 'bg-white text-gray-900' : 'text-white/70 hover:text-white'}`}
+            >
+              ポイント
+            </button>
+            <button
+              onClick={() => setScanMode('event')}
+              className={`flex-1 py-2 rounded-full transition ${scanMode === 'event' ? 'bg-white text-gray-900' : 'text-white/70 hover:text-white'}`}
+            >
+              ライブ
+            </button>
+          </div>
+
+          {scanMode === 'event' && (
+            <div className="mt-3 bg-black/50 backdrop-blur-md rounded-2xl px-4 py-3">
+              <div className="text-xs text-white/70 font-bold mb-2 flex items-center gap-2">
+                <CalendarDays size={14} /> 対象ライブ
+              </div>
+              <select
+                value={selectedEventId ?? ''}
+                onChange={(e) => setSelectedEventId(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full bg-white/10 text-white font-bold text-sm py-2 px-3 rounded-xl focus:outline-none"
+              >
+                <option value="">ライブを選択</option>
+                {events.map(event => (
+                  <option key={event.id} value={event.id}>
+                    {event.is_cancelled ? '【中止】' : ''}{event.title} ({new Date(event.start_at).toLocaleDateString('ja-JP')})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
         {/* Camera View */}
         <div id="reader" className={`w-full h-full bg-black ${scanResult || error ? 'hidden' : 'block'}`}></div>
         
@@ -353,8 +513,41 @@ export const Scanner = () => {
                     {scanResult.userName && <p className="text-xs font-mono text-gray-400 mt-1">{scanResult.id}</p>}
                   </div>
                   
-                  {/* Action: Use Ticket */}
-                  {scanResult.action === 'USE_TICKET' ? (
+                  {/* Action: Event Check-in */}
+                  {scanMode === 'event' ? (
+                    <div className="text-center">
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ライブ参加確認</p>
+                      <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                        <CalendarDays size={32} className="text-blue-600 mx-auto mb-2" />
+                        {eventStatus?.status === 'ERROR' && (
+                          <p className="text-xs text-red-500 font-bold">{eventStatus.message}</p>
+                        )}
+                        {isCheckingEvent && (
+                          <p className="text-xs text-gray-500 font-bold">参加状況を確認中...</p>
+                        )}
+                        {!isCheckingEvent && eventStatus?.status === 'NOT_REGISTERED' && (
+                          <p className="text-xs text-gray-500 font-bold">参加登録がありません</p>
+                        )}
+                        {!isCheckingEvent && eventStatus?.status === 'APPLY' && (
+                          <p className="text-xs text-blue-600 font-bold">参加予定</p>
+                        )}
+                        {!isCheckingEvent && eventStatus?.status === 'CHECKED_IN' && (
+                          <p className="text-xs text-green-600 font-bold">来場済み</p>
+                        )}
+                        {!isCheckingEvent && eventStatus?.status === 'CANCELLED' && (
+                          <p className="text-xs text-gray-400 font-bold">参加取消</p>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={checkInEvent}
+                        disabled={eventStatus?.status !== 'APPLY'}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      >
+                        来場確認する
+                      </button>
+                    </div>
+                  ) : scanResult.action === 'USE_TICKET' ? (
                      <div className="text-center">
                         <div className="bg-green-50 p-4 rounded-xl mb-4">
                           <Ticket size={32} className="text-green-600 mx-auto mb-2" />

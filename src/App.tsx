@@ -11,6 +11,7 @@ import { UserTickets } from './pages/user/Tickets';
 import { UserSettings } from './pages/user/Settings';
 import { UserDesigns } from './pages/user/UserDesigns';
 import { UserHistory } from './pages/user/UserHistory'; // Updated import path
+import { UserLiveSchedule } from './pages/user/LiveSchedule';
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
@@ -21,6 +22,7 @@ import { ManageGifts } from './pages/admin/Gifts';
 import { RankConfigPage } from './pages/admin/RankConfig';
 import { ManageDesigns } from './pages/admin/DesignConfig';
 import { GroupManagement } from './pages/admin/GroupManagement';
+import { AdminLiveSchedule } from './pages/admin/LiveSchedule';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { useSyncGroups } from './hooks/useSyncGroups';
@@ -81,6 +83,7 @@ function App() {
         <Route path="/user/settings" element={<UserSettings />} />
         <Route path="/user/designs" element={<UserDesigns />} />
         <Route path="/user/history" element={<UserHistory />} /> {/* Added Route */}
+        <Route path="/user/live-schedule" element={<UserLiveSchedule />} />
         <Route path="/user/groups/search" element={<GroupSearch />} /> {/* New Route */}
         <Route path="/user/profile" element={<ProfileEdit />} />
         
@@ -92,6 +95,7 @@ function App() {
         <Route path="/admin/ranks" element={<ProtectedAdminRoute><RankConfigPage /></ProtectedAdminRoute>} />
         <Route path="/admin/designs" element={<ProtectedAdminRoute><ManageDesigns /></ProtectedAdminRoute>} />
         <Route path="/admin/groups" element={<ProtectedAdminRoute><GroupManagement /></ProtectedAdminRoute>} />
+        <Route path="/admin/live-schedule" element={<ProtectedAdminRoute><AdminLiveSchedule /></ProtectedAdminRoute>} />
       </Routes>
     </>
   );
