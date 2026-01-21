@@ -55,3 +55,86 @@ drop policy if exists "Allow authenticated update registrations" on public.live_
 create policy "Allow authenticated update registrations"
 on public.live_event_registrations for update
 using ((select auth.role()) = 'authenticated');
+
+-- ==========================================
+-- Live Event Check-ins (QR scanned)
+-- ==========================================
+create or replace view public.live_event_checkins as
+select
+  ler.id as registration_id,
+  ler.event_id,
+  le.group_id,
+  ler.user_id,
+  ler.user_name,
+  ler.checked_in_at,
+  le.start_at::date as event_date
+from public.live_event_registrations ler
+join public.live_events le on le.id = ler.event_id
+where
+  ler.checked_in_at is not null
+  and ler.status = 'CHECKED_IN'
+  and le.is_cancelled is not true;
+
+-- ==========================================
+-- Live Event Attendance Streaks (by day)
+-- ==========================================
+create or replace view public.live_event_attendance_streaks as
+with ordered as (
+  select
+    lec.*,
+    lag(event_date) over (
+      partition by user_id, group_id
+      order by event_date
+    ) as prev_event_date
+  from public.live_event_checkins lec
+),
+flags as (
+  select
+    ordered.*,
+    case
+      when prev_event_date is null then 1
+      when (event_date - prev_event_date) > 1 then 1
+      else 0
+    end as is_new_streak
+  from ordered
+),
+grouped as (
+  select
+    flags.*,
+    sum(is_new_streak) over (
+      partition by user_id, group_id
+      order by event_date
+    ) as streak_group
+  from flags
+)
+select
+  grouped.*,
+  row_number() over (
+    partition by user_id, group_id, streak_group
+    order by event_date
+  ) as streak_count
+from grouped;
+
+-- ==========================================
+-- Live Event Attendance Summary (per user, group)
+-- ==========================================
+create or replace view public.live_event_attendance_summary as
+with latest as (
+  select
+    user_id,
+    group_id,
+    max(event_date) as latest_event_date
+  from public.live_event_attendance_streaks
+  group by user_id, group_id
+)
+select
+  s.user_id,
+  s.group_id,
+  count(*) as total_checked_in,
+  max(s.streak_count) as max_streak,
+  max(s.streak_count) filter (where s.event_date = l.latest_event_date) as current_streak
+from public.live_event_attendance_streaks s
+join latest l
+  on l.user_id = s.user_id
+  and l.group_id = s.group_id
+group by s.user_id, s.group_id;

@@ -12,6 +12,7 @@ import { UserSettings } from './pages/user/Settings';
 import { UserDesigns } from './pages/user/UserDesigns';
 import { UserHistory } from './pages/user/UserHistory'; // Updated import path
 import { UserLiveSchedule } from './pages/user/LiveSchedule';
+import { UserLiveAttendance } from './pages/user/LiveAttendance';
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
@@ -84,6 +85,7 @@ function App() {
         <Route path="/user/designs" element={<UserDesigns />} />
         <Route path="/user/history" element={<UserHistory />} /> {/* Added Route */}
         <Route path="/user/live-schedule" element={<UserLiveSchedule />} />
+        <Route path="/user/live-attendance" element={<UserLiveAttendance />} />
         <Route path="/user/groups/search" element={<GroupSearch />} /> {/* New Route */}
         <Route path="/user/profile" element={<ProfileEdit />} />
         
