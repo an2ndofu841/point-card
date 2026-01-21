@@ -46,7 +46,6 @@ export const Scanner = () => {
              {
                fps: 10,
                qrbox: { width: 250, height: 250 },
-               aspectRatio: window.innerWidth / window.innerHeight,
              },
              (decodedText) => {
                 handleScan(decodedText);
@@ -258,7 +257,7 @@ export const Scanner = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans">
+    <div className="min-h-[100dvh] bg-black text-white flex flex-col font-sans">
       <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-20">
         <Link to="/admin/dashboard" className="p-2 bg-white/10 rounded-full backdrop-blur-md">
           <ArrowLeft size={20} />
@@ -273,14 +272,12 @@ export const Scanner = () => {
             width: 100%;
             height: 100%;
             overflow: hidden;
-            position: fixed !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            position: absolute !important;
+            inset: 0;
             z-index: 0;
           }
-          #reader video {
+          #reader video,
+          #reader canvas {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
