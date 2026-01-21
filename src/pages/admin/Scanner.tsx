@@ -143,8 +143,40 @@ export const Scanner = () => {
 
   const handleScan = (text: string) => {
     try {
-      // Decode Base64
-      const json = JSON.parse(atob(text));
+      const raw = text.trim();
+      const tryParseJson = (value: string) => {
+        try {
+          return JSON.parse(value);
+        } catch {
+          return null;
+        }
+      };
+      const tryParseBase64 = (value: string) => {
+        try {
+          return JSON.parse(atob(value));
+        } catch {
+          return null;
+        }
+      };
+      const tryParseBase64Url = (value: string) => {
+        try {
+          let normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+          const padLength = normalized.length % 4;
+          if (padLength) {
+            normalized += '='.repeat(4 - padLength);
+          }
+          return JSON.parse(atob(normalized));
+        } catch {
+          return null;
+        }
+      };
+
+      const json =
+        tryParseBase64(raw) ||
+        tryParseBase64Url(raw) ||
+        tryParseJson(raw);
+
+      if (!json) throw new Error("Invalid Format");
       const { id, ts, userId, name: encodedName, i, t } = json; // support both legacy and compact keys
       
       const targetId = id || userId || i;
@@ -178,7 +210,8 @@ export const Scanner = () => {
       // Note: We don't block scanning if not member, but we should probably init membership on grant
       
     } catch (e) {
-      // console.log("Scan ignored:", text);
+      setError("QRコードの形式が不正です");
+      pauseScanner();
     }
   };
   
