@@ -46,7 +46,7 @@ export const Scanner = () => {
              {
                fps: 10,
                qrbox: { width: 250, height: 250 },
-               // aspectRatio removed to allow full screen fit
+               aspectRatio: window.innerWidth / window.innerHeight,
              },
              (decodedText) => {
                 handleScan(decodedText);
@@ -270,23 +270,14 @@ export const Scanner = () => {
       <div className="flex-1 flex flex-col relative overflow-hidden bg-black">
         <style>{`
           #reader {
-            width: 100% !important;
-            height: 100% !important;
-            border: none !important;
-            position: absolute !important;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
           }
           #reader video {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
-            border-radius: 0 !important;
-            position: absolute !important;
-            top: 0;
-            left: 0;
           }
         `}</style>
         {/* Camera View */}
