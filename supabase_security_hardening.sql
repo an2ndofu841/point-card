@@ -47,3 +47,6 @@ WITH CHECK (auth.role() = 'authenticated' AND is_admin());
 
 -- Note: regular users still need read access (SELECT), which is covered by existing "Allow public read..." policies.
 
+
+
+

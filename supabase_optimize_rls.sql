@@ -133,3 +133,6 @@ CREATE POLICY "Authenticated users can update user designs"
 ON public.user_designs FOR UPDATE
 USING ((select auth.role()) = 'authenticated');
 
+
+
+

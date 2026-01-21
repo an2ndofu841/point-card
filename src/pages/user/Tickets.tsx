@@ -249,7 +249,7 @@ export const UserTickets = () => {
                 >
                     <ArrowRight size={20} className="text-primary" />
                 </div>
-             </div>
+             </div>Qnq
 
           </div>
         </div>
