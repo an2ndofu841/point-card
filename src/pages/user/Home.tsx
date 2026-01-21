@@ -665,9 +665,31 @@ export const UserHome = () => {
          )}
       </div>
 
+      {/* QR Code Section */}
+      {activeGroup && (
+        <div className="px-6 -mt-6 relative z-10">
+            <div className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-200/50 max-w-[18rem] mx-auto text-center border border-gray-100">
+            <div className="mb-4 bg-white p-2 rounded-xl border border-gray-50 inline-block">
+                {qrValue && (
+                    <QRCodeCanvas 
+                    value={qrValue} 
+                    size={180}
+                    level={"H"}
+                    className="rounded-lg"
+                    />
+                )}
+            </div>
+            
+            <div className="text-xs text-gray-400 font-bold">
+                会員証QRコード
+            </div>
+            </div>
+        </div>
+      )}
+
       {/* Pinned Announcements */}
       {activeGroup && announcements.length > 0 && (
-        <div className="px-6 mt-6 space-y-3 max-w-md mx-auto">
+        <div className="px-6 mt-4 space-y-3 max-w-md mx-auto">
           {announcements.map(item => (
             <div key={item.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
               <div className="flex items-start gap-3">
@@ -691,28 +713,6 @@ export const UserHome = () => {
               </div>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* QR Code Section */}
-      {activeGroup && (
-        <div className="px-6 -mt-6 relative z-10">
-            <div className="bg-white rounded-2xl p-6 shadow-xl shadow-gray-200/50 max-w-[18rem] mx-auto text-center border border-gray-100">
-            <div className="mb-4 bg-white p-2 rounded-xl border border-gray-50 inline-block">
-                {qrValue && (
-                    <QRCodeCanvas 
-                    value={qrValue} 
-                    size={180}
-                    level={"H"}
-                    className="rounded-lg"
-                    />
-                )}
-            </div>
-            
-            <div className="text-xs text-gray-400 font-bold">
-                会員証QRコード
-            </div>
-            </div>
         </div>
       )}
 
