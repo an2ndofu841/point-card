@@ -24,8 +24,8 @@ export const AdminDashboard = () => {
             const count = await db.groups.count();
             if (count === 0) {
                 await db.groups.bulkPut([
-                    { id: 1, name: 'Appare!', themeColor: '#2563EB' },
-                    { id: 2, name: 'Mock Group 2', themeColor: '#10B981' }
+                    { id: 1, name: 'Appare!', themeColor: '#2563EB', deletedAt: null },
+                    { id: 2, name: 'Mock Group 2', themeColor: '#10B981', deletedAt: null }
                 ]);
             }
             return;
@@ -43,7 +43,8 @@ export const AdminDashboard = () => {
                 id: g.id,
                 name: g.name,
                 themeColor: g.theme_color || g.themeColor || '#000000',
-                logoUrl: g.logo_url || g.logoUrl
+                logoUrl: g.logo_url || g.logoUrl,
+                deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
             })));
         } else {
            // If no groups in Supabase, check if local DB is empty.

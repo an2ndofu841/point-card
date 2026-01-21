@@ -38,7 +38,7 @@ export const JoinGroup = () => {
         // 1. Check if group exists locally
         let group = await db.groups.get(gId);
 
-        // 2. If not local, fetch from Supabase (or Mock logic)
+      // 2. If not local, fetch from Supabase (or Mock logic)
         if (!group) {
             // Mock Logic for testing without Supabase data
             if (isMock && gId > 1) {
@@ -48,7 +48,8 @@ export const JoinGroup = () => {
                    id: gId,
                    name: `Mock Group ${gId}`,
                    themeColor: '#8B5CF6', // Purple default for mocks
-                   logoUrl: undefined
+                   logoUrl: undefined,
+                   deletedAt: null
                };
                await db.groups.add(group);
             } else {
@@ -66,15 +67,28 @@ export const JoinGroup = () => {
                     return;
                 }
 
+                if (data.deleted_at) {
+                    setStatus('error');
+                    setMessage('このグループは削除されています');
+                    return;
+                }
+
                 // Add to local DB
                 group = {
                     id: data.id,
                     name: data.name,
                     themeColor: data.theme_color,
-                    logoUrl: data.logo_url || undefined
+                    logoUrl: data.logo_url || undefined,
+                    deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
                 };
                 await db.groups.add(group);
             }
+        }
+
+        if (group.deletedAt) {
+            setStatus('error');
+            setMessage('このグループは削除されています');
+            return;
         }
 
         // 3. Check if already a member

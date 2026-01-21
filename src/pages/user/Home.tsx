@@ -113,23 +113,34 @@ export const UserHome = () => {
     return await db.groups.where('id').anyOf(groupIds).toArray();
   }, [userId]);
 
+  const GROUP_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+  const visibleGroups = groups?.filter(group => {
+    if (!group.deletedAt) return true;
+    return Date.now() - group.deletedAt <= GROUP_RETENTION_MS;
+  });
+
   // Determine active group (default to first joined, or null if none)
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
 
   // Initial selection of group
   useEffect(() => {
     // If activeGroupId is null but we have groups, select the first one
-    if (activeGroupId === null && groups && groups.length > 0) {
-        setActiveGroupId(groups[0].id);
+    if (activeGroupId === null && visibleGroups && visibleGroups.length > 0) {
+        setActiveGroupId(visibleGroups[0].id);
     }
     // Also, if we have a selected group but it's not in the list anymore (rare), fallback
-    if (activeGroupId !== null && groups && !groups.find(g => g.id === activeGroupId)) {
-        if (groups.length > 0) setActiveGroupId(groups[0].id);
+    if (activeGroupId !== null && visibleGroups && !visibleGroups.find(g => g.id === activeGroupId)) {
+        if (visibleGroups.length > 0) setActiveGroupId(visibleGroups[0].id);
         else setActiveGroupId(null);
     }
-  }, [groups, activeGroupId]);
+  }, [visibleGroups, activeGroupId]);
 
-  const activeGroup = groups?.find(g => g.id === activeGroupId);
+  const activeGroup = visibleGroups?.find(g => g.id === activeGroupId);
+  const activeGroupDeletedAt = activeGroup?.deletedAt || null;
+  const activeGroupDaysLeft = activeGroupDeletedAt
+    ? Math.max(0, Math.ceil((activeGroupDeletedAt + GROUP_RETENTION_MS - Date.now()) / (24 * 60 * 60 * 1000)))
+    : null;
 
   // Sync Groups on Load (Restore from Supabase if local DB is empty after clear)
   useEffect(() => {
@@ -170,7 +181,8 @@ export const UserHome = () => {
                                     id: groupData.id,
                                     name: groupData.name,
                                     themeColor: groupData.theme_color,
-                                    logoUrl: groupData.logo_url
+                                    logoUrl: groupData.logo_url,
+                                    deletedAt: groupData.deleted_at ? new Date(groupData.deleted_at).getTime() : null
                                 });
                             }
                         }
@@ -579,7 +591,7 @@ export const UserHome = () => {
          <div className="relative z-10 mb-4">
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {/* Only show joined groups */}
-                {groups?.map(group => (
+            {visibleGroups?.map(group => (
                     <button
                         key={group.id}
                         onClick={() => setActiveGroupId(group.id)}
@@ -590,6 +602,11 @@ export const UserHome = () => {
                             }`}
                     >
                         {group.name}
+                        {group.deletedAt && (
+                          <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                            削除済み
+                          </span>
+                        )}
                     </button>
                 ))}
                 {/* Add Group Button */}
@@ -601,7 +618,12 @@ export const UserHome = () => {
 
          {/* Point Card OR Empty State */}
          {activeGroup ? (
-             <div className="relative w-full max-w-sm mx-auto aspect-[1.6/1] rounded-2xl shadow-xl shadow-gray-300/50 overflow-hidden p-6 flex flex-col justify-between isolate transition-all duration-500">
+             <div className={`relative w-full max-w-sm mx-auto aspect-[1.6/1] rounded-2xl shadow-xl shadow-gray-300/50 overflow-hidden p-6 flex flex-col justify-between isolate transition-all duration-500 ${activeGroupDeletedAt ? 'opacity-90' : ''}`}>
+                {activeGroupDeletedAt && (
+                  <div className="absolute top-4 left-4 bg-white/90 text-gray-600 text-[10px] font-bold px-2 py-1 rounded-full shadow">
+                    削除済み（残り{activeGroupDaysLeft}日）
+                  </div>
+                )}
                 {/* Dynamic Background */}
                 <div 
                   className="absolute inset-0 -z-10"

@@ -5,6 +5,7 @@ export interface IdolGroup {
   name: string;
   themeColor: string;
   logoUrl?: string; // Add logoUrl to IdolGroup
+  deletedAt?: number | null;
 }
 
 export interface UserMembership {

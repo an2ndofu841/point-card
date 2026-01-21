@@ -28,6 +28,7 @@ export const GroupSearch = () => {
         .from('groups')
         .select('*')
         .ilike('name', `%${searchQuery}%`)
+        .is('deleted_at', null)
         .limit(20);
         
       if (error) throw error;
@@ -37,7 +38,8 @@ export const GroupSearch = () => {
         id: g.id,
         name: g.name,
         themeColor: g.theme_color,
-        logoUrl: g.logo_url
+        logoUrl: g.logo_url,
+        deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
       })) || [];
       
       setSearchResults(mappedData);

@@ -52,26 +52,46 @@ export const Scanner = () => {
       try {
         const devices = await Html5Qrcode.getCameras();
         if (devices && devices.length) {
-           // Prefer back camera
-           const cameraId = devices.find(d => d.label.toLowerCase().includes('back'))?.id || devices[0].id;
-           
-           const html5QrCode = new Html5Qrcode("reader");
-           scannerRef.current = html5QrCode;
-           
-           await html5QrCode.start(
-             cameraId, 
-             {
-               fps: 10,
-               qrbox: { width: 250, height: 250 },
-             },
-             (decodedText) => {
+          const html5QrCode = new Html5Qrcode("reader");
+          scannerRef.current = html5QrCode;
+
+          const startScanner = async () => {
+            await html5QrCode.start(
+              { facingMode: 'environment' },
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+              },
+              (decodedText) => {
                 handleScan(decodedText);
-             },
-             () => {
-               // ignore frame errors
-             }
-           );
-           isScanningRef.current = true;
+              },
+              () => {
+                // ignore frame errors
+              }
+            );
+            isScanningRef.current = true;
+          };
+
+          try {
+            await startScanner();
+          } catch (fallbackError) {
+            // Fallback to explicit device id if facingMode is not supported
+            const cameraId = devices.find(d => d.label.toLowerCase().includes('back'))?.id || devices[0].id;
+            await html5QrCode.start(
+              cameraId,
+              {
+                fps: 10,
+                qrbox: { width: 250, height: 250 },
+              },
+              (decodedText) => {
+                handleScan(decodedText);
+              },
+              () => {
+                // ignore frame errors
+              }
+            );
+            isScanningRef.current = true;
+          }
         } else {
           setError("カメラが見つかりませんでした");
         }

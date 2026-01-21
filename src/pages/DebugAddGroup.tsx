@@ -15,7 +15,8 @@ export const DebugAddGroup = () => {
         id: 999, // Special ID for testing
         name: '大鈴グミ',
         themeColor: '#FF69B4', // Hot Pink
-        logoUrl: '' // Optional
+        logoUrl: '', // Optional
+        deletedAt: null
       };
       
       // Check if exists, or update

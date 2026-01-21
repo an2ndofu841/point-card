@@ -78,7 +78,8 @@ export const GroupManagement = () => {
             await db.groups.add({
                 name: formData.name,
                 themeColor: formData.themeColor || '#2563EB',
-                logoUrl: formData.logoUrl
+                logoUrl: formData.logoUrl,
+                deletedAt: null
             } as any);
           }
       } else {
@@ -121,7 +122,8 @@ export const GroupManagement = () => {
                 id: data.id,
                 name: data.name,
                 themeColor: data.theme_color,
-                logoUrl: data.logo_url
+              logoUrl: data.logo_url,
+              deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
             });
           }
       }
@@ -155,11 +157,14 @@ export const GroupManagement = () => {
 
     try {
       if (!isMock) {
-        const { error } = await supabase.from('groups').delete().eq('id', id);
+        const { error } = await supabase
+          .from('groups')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id);
         if (error) throw error;
       }
 
-      await db.groups.delete(id);
+      await db.groups.update(id, { deletedAt: Date.now() });
     } catch (err) {
       console.error('Failed to delete group', err);
       alert('削除に失敗しました。');
@@ -284,7 +289,12 @@ export const GroupManagement = () => {
         </div>
       ) : (
         <div className="space-y-4 max-w-lg mx-auto">
-          {groups?.map(group => (
+          {groups?.map(group => {
+            const isDeleted = !!group.deletedAt;
+            const daysLeft = isDeleted
+              ? Math.max(0, Math.ceil((group.deletedAt! + 30 * 24 * 60 * 60 * 1000 - Date.now()) / (24 * 60 * 60 * 1000)))
+              : null;
+            return (
             <div key={group.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm group-card">
                <div className="flex items-center justify-between mb-4">
                  <div className="flex items-center gap-4">
@@ -295,22 +305,32 @@ export const GroupManagement = () => {
                      {group.logoUrl ? <img src={group.logoUrl} alt="" className="w-full h-full object-cover rounded-full" /> : group.name[0]}
                    </div>
                    <div>
-                     <h3 className="font-bold text-text-main text-lg">{group.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-bold text-lg ${isDeleted ? 'text-gray-400 line-through' : 'text-text-main'}`}>{group.name}</h3>
+                      {isDeleted && (
+                        <span className="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">削除済み</span>
+                      )}
+                    </div>
                      <p className="text-xs text-text-sub font-mono">ID: {group.id}</p>
+                    {isDeleted && (
+                      <p className="text-[11px] text-gray-400 mt-1">データは削除後30日間閲覧可能（残り{daysLeft}日）</p>
+                    )}
                    </div>
                  </div>
                  
                  <div className="flex items-center gap-2">
                    <button 
-                       onClick={() => handleEdit(group)}
-                       className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-blue-50 hover:text-blue-500 transition"
+                      onClick={() => handleEdit(group)}
+                      disabled={isDeleted}
+                      className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-blue-50 hover:text-blue-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
                    >
                        <Edit size={18} />
                    </button>
                    {group.id !== 1 && ( // Prevent deleting default group
                       <button 
                           onClick={() => handleDelete(group.id)}
-                          className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition"
+                          disabled={isDeleted}
+                          className="p-2 bg-gray-50 text-gray-400 rounded-lg hover:bg-red-50 hover:text-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                           <Trash2 size={18} />
                       </button>
@@ -371,7 +391,7 @@ export const GroupManagement = () => {
                   )}
                </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>
