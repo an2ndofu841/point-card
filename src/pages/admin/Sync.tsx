@@ -36,17 +36,12 @@ export const Sync = () => {
       // But let's stick to current types if possible.
       // The problem might be that Sync.tsx filters by type.
       const warnings: string[] = [];
-      const allowedGrantPoints = new Set([1, 5]);
-      const invalidGrantLogs = pendingScans.filter(s => s.type === 'GRANT' && !allowedGrantPoints.has(s.points));
-      if (invalidGrantLogs.length > 0) {
-        warnings.push(`不正なポイント付与が${invalidGrantLogs.length}件あり除外しました`);
-      }
       const ticketUseLogs = pendingScans.filter(s => s.type === 'USE_TICKET' && s.ticketId);
       const pointLogs = pendingScans.filter(s => 
-        (s.type === 'GRANT' && allowedGrantPoints.has(s.points)) || (s.type === 'USE_TICKET' && !s.ticketId)
+        s.type === 'GRANT' || (s.type === 'USE_TICKET' && !s.ticketId)
       );
       const designLogs = pendingScans.filter(s => s.type === 'GRANT_DESIGN');
-      const idsToDelete: number[] = invalidGrantLogs.map(s => s.id as number);
+      const idsToDelete: number[] = [];
 
       // 1. Sync Point Logs / Ticket Usage
       const successfulTicketLogs: typeof ticketUseLogs = [];
