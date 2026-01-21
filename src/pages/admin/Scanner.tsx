@@ -145,15 +145,16 @@ export const Scanner = () => {
     try {
       // Decode Base64
       const json = JSON.parse(atob(text));
-      const { id, ts, userId, name: encodedName } = json; // support both 'id' (points) and 'userId' (ticket)
+      const { id, ts, userId, name: encodedName, i, t } = json; // support both legacy and compact keys
       
-      const targetId = id || userId;
+      const targetId = id || userId || i;
+      const timeStamp = ts || t;
       const userName = encodedName ? decodeURIComponent(encodedName) : undefined;
 
-      if (!targetId || !ts) throw new Error("Invalid Format");
+      if (!targetId || !timeStamp) throw new Error("Invalid Format");
       
       const now = Date.now();
-      const age = now - ts;
+      const age = now - timeStamp;
       
       // Allow old QRs (screenshots)
       let isOld = false;
@@ -167,7 +168,7 @@ export const Scanner = () => {
          return;
       }
       
-      setScanResult({ ...json, id: targetId, isOld, userName });
+      setScanResult({ ...json, id: targetId, ts: timeStamp, isOld, userName });
       setError(null);
       pauseScanner();
       

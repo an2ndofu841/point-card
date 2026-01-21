@@ -492,9 +492,8 @@ export const UserHome = () => {
     const safeName = userName ? encodeURIComponent(userName) : '';
 
     const payload = {
-      id: userId,
-      ts: Date.now(),
-      name: safeName // Encoded name
+      i: userId,
+      t: Date.now()
     };
     // btoa will fail if safeName still has issues (unlikely with encodeURIComponent)
     // But just in case we double check or wrap
@@ -503,7 +502,7 @@ export const UserHome = () => {
     } catch (e) {
         console.error("QR Generation failed", e);
         // Fallback without name if encoding fails completely
-        setQrValue(btoa(JSON.stringify({ id: userId, ts: Date.now() })));
+        setQrValue(btoa(JSON.stringify({ i: userId, t: Date.now() })));
     }
   }, [userId, userName]);
 
@@ -695,8 +694,9 @@ export const UserHome = () => {
                 {qrValue && (
                     <QRCodeCanvas 
                     value={qrValue} 
-                    size={180}
-                    level={"H"}
+                    size={200}
+                    level={"M"}
+                    includeMargin
                     className="rounded-lg"
                     />
                 )}
