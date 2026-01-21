@@ -267,18 +267,26 @@ export const Scanner = () => {
         <div className="w-10"></div> {/* Spacer */}
       </header>
 
-      <div className="flex-1 flex flex-col relative overflow-hidden">
+      <div className="flex-1 flex flex-col relative overflow-hidden bg-black">
         <style>{`
           #reader {
             width: 100% !important;
             height: 100% !important;
             border: none !important;
+            position: absolute !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
           }
           #reader video {
             width: 100% !important;
             height: 100% !important;
             object-fit: cover !important;
             border-radius: 0 !important;
+            position: absolute !important;
+            top: 0;
+            left: 0;
           }
         `}</style>
         {/* Camera View */}
