@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal } from 'lucide-react';
+import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal, Bell, Pin } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -61,6 +61,34 @@ export const UserHome = () => {
   type LevelConfig = {
     level: number;
     required_points: number;
+  };
+
+  type LiveEvent = {
+    id: number;
+    group_id: number;
+    title: string;
+    start_at: string;
+    end_at?: string | null;
+    location?: string | null;
+    is_cancelled?: boolean;
+  };
+
+  type LiveRegistration = {
+    id?: number;
+    event_id: number;
+    status: string;
+    checked_in_at?: string | null;
+  };
+
+  type Announcement = {
+    id: number;
+    group_id: number;
+    title: string;
+    body?: string | null;
+    event_id?: number | null;
+    is_pinned: boolean;
+    active: boolean;
+    updated_at?: string;
   };
 
   const MAX_LEVEL = 100;
@@ -188,6 +216,10 @@ export const UserHome = () => {
   const totalPoints = membership?.totalPoints ?? 0;
 
   const [levelConfigs, setLevelConfigs] = useState<LevelConfig[]>([]);
+  const [nextLive, setNextLive] = useState<LiveEvent | null>(null);
+  const [nextRegistration, setNextRegistration] = useState<LiveRegistration | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [announcementEvents, setAnnouncementEvents] = useState<Record<number, LiveEvent>>({});
 
   useEffect(() => {
     const loadLevels = async () => {
@@ -252,6 +284,155 @@ export const UserHome = () => {
   };
 
   const levelState = resolveLevelProgress();
+
+  useEffect(() => {
+    const loadNextLive = async () => {
+      if (!userId || !activeGroupId || isMock) {
+        setNextLive(null);
+        setNextRegistration(null);
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('live_events')
+        .select('*')
+        .eq('group_id', activeGroupId)
+        .gte('start_at', now)
+        .eq('is_cancelled', false)
+        .order('start_at', { ascending: true })
+        .limit(1);
+
+      if (error) {
+        console.error('Failed to fetch next live event', error);
+        setNextLive(null);
+        setNextRegistration(null);
+        return;
+      }
+
+      const event = (data && data.length > 0 ? data[0] : null) as LiveEvent | null;
+      setNextLive(event);
+
+      if (!event) {
+        setNextRegistration(null);
+        return;
+      }
+
+      const { data: regData, error: regError } = await supabase
+        .from('live_event_registrations')
+        .select('*')
+        .eq('event_id', event.id)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (regError) {
+        console.error('Failed to fetch registration', regError);
+        setNextRegistration(null);
+      } else {
+        setNextRegistration(regData as LiveRegistration | null);
+      }
+    };
+
+    loadNextLive();
+  }, [userId, activeGroupId]);
+
+  useEffect(() => {
+    const loadAnnouncements = async () => {
+      if (!activeGroupId || isMock) {
+        setAnnouncements([]);
+        setAnnouncementEvents({});
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('live_announcements')
+        .select('*')
+        .eq('group_id', activeGroupId)
+        .eq('active', true)
+        .order('is_pinned', { ascending: false })
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to fetch announcements', error);
+        setAnnouncements([]);
+        setAnnouncementEvents({});
+        return;
+      }
+
+      const fetched = (data || []) as Announcement[];
+      setAnnouncements(fetched);
+
+      const eventIds = fetched.map(item => item.event_id).filter(Boolean) as number[];
+      if (eventIds.length === 0) {
+        setAnnouncementEvents({});
+        return;
+      }
+
+      const { data: eventData, error: eventError } = await supabase
+        .from('live_events')
+        .select('id, title, start_at, is_cancelled')
+        .in('id', eventIds);
+
+      if (eventError) {
+        console.error('Failed to fetch announcement events', eventError);
+        setAnnouncementEvents({});
+        return;
+      }
+
+      const map: Record<number, LiveEvent> = {};
+      (eventData || []).forEach(event => {
+        map[event.id] = event as LiveEvent;
+      });
+      setAnnouncementEvents(map);
+    };
+
+    loadAnnouncements();
+  }, [activeGroupId]);
+
+  const handleJoinNextLive = async () => {
+    if (!userId || !nextLive || isMock) return;
+    const displayName = userProfile?.name || 'ゲスト';
+    const { error } = await supabase.from('live_event_registrations').upsert({
+      event_id: nextLive.id,
+      user_id: userId,
+      user_name: displayName,
+      status: 'APPLY',
+      applied_at: new Date().toISOString()
+    }, { onConflict: 'event_id,user_id' });
+
+    if (error) {
+      console.error('Failed to join event', error);
+      alert('参加登録に失敗しました');
+      return;
+    }
+
+    setNextRegistration(prev => ({
+      ...prev,
+      event_id: nextLive.id,
+      status: 'APPLY'
+    } as LiveRegistration));
+  };
+
+  const handleCancelNextLive = async () => {
+    if (!userId || !nextLive || isMock) return;
+    const { error } = await supabase
+      .from('live_event_registrations')
+      .update({ status: 'CANCELLED' })
+      .eq('event_id', nextLive.id)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Failed to cancel registration', error);
+      alert('取消に失敗しました');
+      return;
+    }
+
+    setNextRegistration(prev => ({
+      ...prev,
+      event_id: nextLive.id,
+      status: 'CANCELLED'
+    } as LiveRegistration));
+  };
 
   // Fetch Rank Configs for Active Group
   const ranks = useLiveQuery(() => 
@@ -336,6 +517,13 @@ export const UserHome = () => {
   };
 
   const bgStyles = getBackgroundStyles(currentDesign?.imageUrl);
+
+  const nextLiveDateLabel = nextLive
+    ? new Date(nextLive.start_at).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' })
+    : '';
+  const nextLiveTimeLabel = nextLive
+    ? new Date(nextLive.start_at).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })
+    : '';
 
   return (
     <div className="min-h-screen bg-bg-main text-text-main pb-24">
@@ -477,6 +665,35 @@ export const UserHome = () => {
          )}
       </div>
 
+      {/* Pinned Announcements */}
+      {activeGroup && announcements.length > 0 && (
+        <div className="px-6 mt-6 space-y-3 max-w-md mx-auto">
+          {announcements.map(item => (
+            <div key={item.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.is_pinned ? 'bg-rose-50 text-rose-600' : 'bg-gray-100 text-gray-500'}`}>
+                  {item.is_pinned ? <Pin size={18} /> : <Bell size={18} />}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-text-main">{item.title}</p>
+                    {item.is_pinned && (
+                      <span className="text-[10px] font-bold bg-rose-50 text-rose-600 px-2 py-0.5 rounded-full">固定</span>
+                    )}
+                  </div>
+                  {item.body && <p className="text-xs text-text-sub mt-1 whitespace-pre-wrap">{item.body}</p>}
+                  {item.event_id && announcementEvents[item.event_id] && (
+                    <p className="text-[11px] text-gray-400 mt-2">
+                      {announcementEvents[item.event_id].title} ({new Date(announcementEvents[item.event_id].start_at).toLocaleDateString('ja-JP')})
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* QR Code Section */}
       {activeGroup && (
         <div className="px-6 -mt-6 relative z-10">
@@ -496,6 +713,56 @@ export const UserHome = () => {
                 会員証QRコード
             </div>
             </div>
+        </div>
+      )}
+
+      {/* Next Live Section */}
+      {activeGroup && (
+        <div className="px-6 mt-4 max-w-md mx-auto">
+          <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-500">
+                <CalendarDays size={16} /> 次回LIVE
+              </div>
+              <Link to="/user/live-schedule" className="text-xs text-primary font-bold">一覧へ</Link>
+            </div>
+
+            {nextLive ? (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="font-bold text-text-main">{nextLive.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{nextLiveDateLabel} {nextLiveTimeLabel}</p>
+                  {nextLive.location && <p className="text-xs text-gray-400 mt-1">{nextLive.location}</p>}
+                </div>
+                <div>
+                  {nextRegistration?.status === 'APPLY' ? (
+                    <button
+                      onClick={handleCancelNextLive}
+                      className="w-full bg-gray-100 text-gray-500 py-2.5 rounded-xl font-bold hover:bg-gray-200 transition"
+                    >
+                      参加を取り消す
+                    </button>
+                  ) : nextRegistration?.status === 'CHECKED_IN' ? (
+                    <button
+                      disabled
+                      className="w-full bg-gray-100 text-gray-400 py-2.5 rounded-xl font-bold cursor-not-allowed"
+                    >
+                      参加済み
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleJoinNextLive}
+                      className="w-full bg-primary text-white py-2.5 rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-primary-dark transition"
+                    >
+                      参加する
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-xs text-gray-400 py-6">次回のライブ予定はありません</div>
+            )}
+          </div>
         </div>
       )}
 

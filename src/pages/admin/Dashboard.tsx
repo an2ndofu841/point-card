@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { QrCode, RefreshCw, Gift, AlertTriangle, LogOut, Crown, Palette, Users, ChevronDown, CalendarDays, Medal, BarChart3 } from 'lucide-react';
+import { QrCode, RefreshCw, Gift, AlertTriangle, LogOut, Crown, Palette, Users, ChevronDown, CalendarDays, Medal, BarChart3, BellRing } from 'lucide-react';
 
 export const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -235,6 +235,16 @@ export const AdminDashboard = () => {
             <div className="text-center">
               <div className="font-bold text-text-main">レベル設定</div>
               <div className="text-text-sub text-xs">必要ポイントを調整</div>
+            </div>
+          </Link>
+
+          <Link to="/admin/live-announcements" className="bg-white p-6 rounded-2xl flex flex-col items-center justify-center border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition active:scale-[0.98]">
+            <div className="bg-rose-50 p-3 rounded-xl text-rose-600 mb-3">
+              <BellRing size={24} />
+            </div>
+            <div className="text-center">
+              <div className="font-bold text-text-main">ライブ告知</div>
+              <div className="text-text-sub text-xs">重要ライブの固定通知</div>
             </div>
           </Link>
         </div>
