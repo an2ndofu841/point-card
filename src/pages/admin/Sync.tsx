@@ -29,99 +29,135 @@ export const Sync = () => {
          return;
        }
 
-       // Separate scans by type
-       // USE_TICKET usually means "User used a ticket" (scanned by admin), but in GiftExchange user creates a log too?
-       // In GiftExchange.tsx, user adds a log with type 'USE_TICKET' and negative points.
-       // Ideally this should be a different type like 'POINT_SPENT' or 'EXCHANGE'.
-       // But let's stick to current types if possible.
-       // The problem might be that Sync.tsx filters by type.
-       const pointLogs = pendingScans.filter(s => s.type === 'GRANT' || s.type === 'USE_TICKET');
-       const designLogs = pendingScans.filter(s => s.type === 'GRANT_DESIGN');
+      // Separate scans by type
+      // USE_TICKET usually means "User used a ticket" (scanned by admin), but in GiftExchange user creates a log too?
+      // In GiftExchange.tsx, user adds a log with type 'USE_TICKET' and negative points.
+      // Ideally this should be a different type like 'POINT_SPENT' or 'EXCHANGE'.
+      // But let's stick to current types if possible.
+      // The problem might be that Sync.tsx filters by type.
+      const warnings: string[] = [];
+      const allowedGrantPoints = new Set([1, 5]);
+      const invalidGrantLogs = pendingScans.filter(s => s.type === 'GRANT' && !allowedGrantPoints.has(s.points));
+      if (invalidGrantLogs.length > 0) {
+        warnings.push(`不正なポイント付与が${invalidGrantLogs.length}件あり除外しました`);
+      }
+      const ticketUseLogs = pendingScans.filter(s => s.type === 'USE_TICKET' && s.ticketId);
+      const pointLogs = pendingScans.filter(s => 
+        (s.type === 'GRANT' && allowedGrantPoints.has(s.points)) || (s.type === 'USE_TICKET' && !s.ticketId)
+      );
+      const designLogs = pendingScans.filter(s => s.type === 'GRANT_DESIGN');
+      const idsToDelete: number[] = invalidGrantLogs.map(s => s.id as number);
 
-       // 1. Sync Point Logs
-       if (pointLogs.length > 0) {
-         const records = pointLogs.map(s => ({
-           user_id: s.userId,
-           group_id: s.groupId || 1, // Default to 1 if missing
-           points: s.points, // s.points can be negative for usage
-           type: s.type,
-           created_at: new Date(s.timestamp).toISOString(),
-           metadata: { ticketId: s.ticketId }
-         }));
-         
-         // Insert history
-         const { error: apiError } = await supabase
-           .from('point_history')
-           .insert(records);
-           
-         if (apiError) throw apiError;
+      // 1. Sync Point Logs / Ticket Usage
+      const successfulTicketLogs: typeof ticketUseLogs = [];
+      for (const log of ticketUseLogs) {
+        const usedAt = log.timestamp ? new Date(log.timestamp).toISOString() : new Date().toISOString();
+        const { data: updatedTickets, error: updateError } = await supabase
+          .from('user_tickets')
+          .update({ status: 'USED', used_at: usedAt })
+          .eq('id', log.ticketId)
+          .eq('status', 'UNUSED')
+          .select('id');
 
-         // Update User Memberships Total Points
-         // We need to aggregate points per user/group and update 'user_memberships' table
-         
-         // Group by user+group
-         const updates = new Map<string, number>();
-         pointLogs.forEach(log => {
-             const key = `${log.userId}:${log.groupId || 1}`;
-             const current = updates.get(key) || 0;
-             updates.set(key, current + log.points); // log.points is negative for usage, positive for grant
-         });
+        if (updateError) throw updateError;
 
-         for (const [key, pointsToAdd] of updates.entries()) {
-             const [userId, gIdStr] = key.split(':');
-             const groupId = parseInt(gIdStr);
+        if (!updatedTickets || updatedTickets.length === 0) {
+          warnings.push(`使用済みのチケットが検出されました (ID: ${log.ticketId})`);
+          idsToDelete.push(log.id as number);
+          continue;
+        }
 
-             const { data: current } = await supabase
-                .from('user_memberships')
-                .select('points, total_points')
-                .eq('user_id', userId)
-                .eq('group_id', groupId)
-                .single();
-             
-             if (current) {
-                 // If pointsToAdd is negative (usage), we subtract from points.
-                 // For total_points (lifetime), we usually only add POSITIVE grants. 
-                 // We shouldn't reduce total_points when user spends points.
-                 // So we need to separate "points delta" from "total points delta".
-                 
-                 // Recalculate deltas for this user/group
-                 const logsForUser = pointLogs.filter(l => l.userId === userId && (l.groupId || 1) === groupId);
-                 const balanceDelta = logsForUser.reduce((sum, log) => sum + log.points, 0);
-                 const lifetimeDelta = logsForUser.reduce((sum, log) => sum + (log.points > 0 ? log.points : 0), 0);
+        successfulTicketLogs.push(log);
+        idsToDelete.push(log.id as number);
+      }
 
-                 const { error: updateError } = await supabase
-                    .from('user_memberships')
-                    .update({
-                        points: (current.points || 0) + balanceDelta,
-                        total_points: (current.total_points || 0) + lifetimeDelta,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('user_id', userId)
-                    .eq('group_id', groupId);
+      const historyLogs = [...pointLogs, ...successfulTicketLogs];
+      if (historyLogs.length > 0) {
+        const records = historyLogs.map(s => ({
+          user_id: s.userId,
+          group_id: s.groupId || 1, // Default to 1 if missing
+          points: s.points, // s.points can be negative for usage
+          type: s.type,
+          created_at: new Date(s.timestamp).toISOString(),
+          metadata: { ticketId: s.ticketId }
+        }));
+        
+        // Insert history
+        const { error: apiError } = await supabase
+          .from('point_history')
+          .insert(records);
+          
+        if (apiError) throw apiError;
+      }
 
-                 if (updateError) {
-                     console.error("Failed to update membership", updateError);
-                     throw updateError;
-                 }
-             } else {
-                 // Create membership if not exists (unlikely if they have a card, but possible)
-                 if (pointsToAdd > 0) {
-                     const { error: insertError } = await supabase.from('user_memberships').insert({
-                         user_id: userId,
-                         group_id: groupId,
-                         points: pointsToAdd,
-                         total_points: pointsToAdd,
-                         current_rank: 'REGULAR'
-                     });
-                     
-                     if (insertError) {
-                         console.error("Failed to insert membership", insertError);
-                         throw insertError;
-                     }
-                 }
-             }
-         }
-       }
+      // Update User Memberships Total Points
+      // We need to aggregate points per user/group and update 'user_memberships' table
+      if (pointLogs.length > 0) {
+        // Group by user+group
+        const updates = new Map<string, number>();
+        pointLogs.forEach(log => {
+            const key = `${log.userId}:${log.groupId || 1}`;
+            const current = updates.get(key) || 0;
+            updates.set(key, current + log.points); // log.points is negative for usage, positive for grant
+        });
+
+        for (const [key, pointsToAdd] of updates.entries()) {
+            const [userId, gIdStr] = key.split(':');
+            const groupId = parseInt(gIdStr);
+
+            const { data: current } = await supabase
+               .from('user_memberships')
+               .select('points, total_points')
+               .eq('user_id', userId)
+               .eq('group_id', groupId)
+               .single();
+            
+            if (current) {
+                // If pointsToAdd is negative (usage), we subtract from points.
+                // For total_points (lifetime), we usually only add POSITIVE grants. 
+                // We shouldn't reduce total_points when user spends points.
+                // So we need to separate "points delta" from "total points delta".
+                
+                // Recalculate deltas for this user/group
+                const logsForUser = pointLogs.filter(l => l.userId === userId && (l.groupId || 1) === groupId);
+                const balanceDelta = logsForUser.reduce((sum, log) => sum + log.points, 0);
+                const lifetimeDelta = logsForUser.reduce((sum, log) => sum + (log.points > 0 ? log.points : 0), 0);
+
+                const { error: updateError } = await supabase
+                   .from('user_memberships')
+                   .update({
+                       points: (current.points || 0) + balanceDelta,
+                       total_points: (current.total_points || 0) + lifetimeDelta,
+                       updated_at: new Date().toISOString()
+                   })
+                   .eq('user_id', userId)
+                   .eq('group_id', groupId);
+
+                if (updateError) {
+                    console.error("Failed to update membership", updateError);
+                    throw updateError;
+                }
+            } else {
+                // Create membership if not exists (unlikely if they have a card, but possible)
+                if (pointsToAdd > 0) {
+                    const { error: insertError } = await supabase.from('user_memberships').insert({
+                        user_id: userId,
+                        group_id: groupId,
+                        points: pointsToAdd,
+                        total_points: pointsToAdd,
+                        current_rank: 'REGULAR'
+                    });
+                    
+                    if (insertError) {
+                        console.error("Failed to insert membership", insertError);
+                        throw insertError;
+                    }
+                }
+            }
+        }
+
+        idsToDelete.push(...pointLogs.map(s => s.id as number));
+      }
 
        // 2. Sync Design Grants (Upsert to user_designs table)
        if (designLogs.length > 0) {
@@ -141,13 +177,19 @@ export const Sync = () => {
            .upsert(designRecords, { onConflict: 'user_id, group_id, design_id' }); // Correct composite unique constraint
          
          if (designError) throw designError;
+        idsToDelete.push(...designLogs.map(s => s.id as number));
        }
        
        // Clean up local pending scans
-       const ids = pendingScans.map(s => s.id as number);
-       await db.pendingScans.bulkDelete(ids);
-       
-       setResult({ success: ids.length });
+      const ids = Array.from(new Set(idsToDelete));
+      if (ids.length > 0) {
+        await db.pendingScans.bulkDelete(ids);
+      }
+      
+      setResult({ success: ids.length });
+      if (warnings.length > 0) {
+        setError(warnings.join('\n'));
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || "同期に失敗しました");
