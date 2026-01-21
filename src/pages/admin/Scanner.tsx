@@ -259,7 +259,7 @@ export const Scanner = () => {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col font-sans">
-      <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-10">
+      <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-20">
         <Link to="/admin/dashboard" className="p-2 bg-white/10 rounded-full backdrop-blur-md">
           <ArrowLeft size={20} />
         </Link>
@@ -273,6 +273,12 @@ export const Scanner = () => {
             width: 100%;
             height: 100%;
             overflow: hidden;
+            position: fixed !important;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 0;
           }
           #reader video {
             width: 100% !important;
@@ -284,7 +290,7 @@ export const Scanner = () => {
         <div id="reader" className={`w-full h-full bg-black ${scanResult || error ? 'hidden' : 'block'}`}></div>
         
         {!scanResult && !error && !successMsg && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
              <div className="w-64 h-64 border-2 border-primary/50 rounded-3xl relative">
                 <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
                 <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-xl"></div>
