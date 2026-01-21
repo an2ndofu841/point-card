@@ -149,8 +149,20 @@ export const GroupManagement = () => {
 
 
   const handleDelete = async (id: number) => {
-    if (window.confirm("このグループを削除してもよろしいですか？\n※注意: 関連するユーザーデータとの整合性が取れなくなる可能性があります。")) {
+    if (!window.confirm("このグループを削除してもよろしいですか？\n※注意: 関連するユーザーデータとの整合性が取れなくなる可能性があります。")) {
+      return;
+    }
+
+    try {
+      if (!isMock) {
+        const { error } = await supabase.from('groups').delete().eq('id', id);
+        if (error) throw error;
+      }
+
       await db.groups.delete(id);
+    } catch (err) {
+      console.error('Failed to delete group', err);
+      alert('削除に失敗しました。');
     }
   };
 
