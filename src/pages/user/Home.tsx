@@ -486,11 +486,6 @@ export const UserHome = () => {
     // Generate static QR code on mount (Identity only)
     if (!userId) return;
     
-    // Sanitize userName to ensure it contains only safe characters for btoa
-    // btoa only supports Latin1 range characters (0-255). 
-    // If userName contains Japanese, we need to encode it properly.
-    const safeName = userName ? encodeURIComponent(userName) : '';
-
     const payload = {
       i: userId,
       t: Date.now()
