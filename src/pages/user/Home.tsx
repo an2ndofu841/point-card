@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck } from 'lucide-react';
+import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -440,6 +440,21 @@ export const UserHome = () => {
                     <div className="text-left">
                     <p className="font-bold text-text-main">ライブ参加実績</p>
                     <p className="text-xs text-text-sub mt-0.5">参加回数・連続参加を確認</p>
+                    </div>
+                </div>
+                <ChevronRight className="text-gray-300 group-hover:text-primary transition" size={20} />
+            </button>
+            </Link>
+
+            <Link to="/user/trophies" className="block w-full">
+            <button className="w-full bg-white p-4 rounded-2xl flex items-center justify-between border border-gray-100 shadow-sm hover:shadow-md hover:border-primary/20 transition group active:scale-[0.99]">
+                <div className="flex items-center gap-4">
+                    <div className="bg-orange-50 p-3 rounded-xl text-orange-600 group-hover:bg-orange-100 transition">
+                    <Medal size={22} />
+                    </div>
+                    <div className="text-left">
+                    <p className="font-bold text-text-main">トロフィー</p>
+                    <p className="text-xs text-text-sub mt-0.5">獲得済みのトロフィーを確認</p>
                     </div>
                 </div>
                 <ChevronRight className="text-gray-300 group-hover:text-primary transition" size={20} />

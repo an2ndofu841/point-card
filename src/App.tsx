@@ -13,6 +13,7 @@ import { UserDesigns } from './pages/user/UserDesigns';
 import { UserHistory } from './pages/user/UserHistory'; // Updated import path
 import { UserLiveSchedule } from './pages/user/LiveSchedule';
 import { UserLiveAttendance } from './pages/user/LiveAttendance';
+import { UserTrophies } from './pages/user/Trophies';
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
@@ -24,6 +25,7 @@ import { RankConfigPage } from './pages/admin/RankConfig';
 import { ManageDesigns } from './pages/admin/DesignConfig';
 import { GroupManagement } from './pages/admin/GroupManagement';
 import { AdminLiveSchedule } from './pages/admin/LiveSchedule';
+import { ManageTrophies } from './pages/admin/Trophies';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { useSyncGroups } from './hooks/useSyncGroups';
@@ -86,6 +88,7 @@ function App() {
         <Route path="/user/history" element={<UserHistory />} /> {/* Added Route */}
         <Route path="/user/live-schedule" element={<UserLiveSchedule />} />
         <Route path="/user/live-attendance" element={<UserLiveAttendance />} />
+        <Route path="/user/trophies" element={<UserTrophies />} />
         <Route path="/user/groups/search" element={<GroupSearch />} /> {/* New Route */}
         <Route path="/user/profile" element={<ProfileEdit />} />
         
@@ -96,6 +99,7 @@ function App() {
         <Route path="/admin/gifts" element={<ProtectedAdminRoute><ManageGifts /></ProtectedAdminRoute>} />
         <Route path="/admin/ranks" element={<ProtectedAdminRoute><RankConfigPage /></ProtectedAdminRoute>} />
         <Route path="/admin/designs" element={<ProtectedAdminRoute><ManageDesigns /></ProtectedAdminRoute>} />
+        <Route path="/admin/trophies" element={<ProtectedAdminRoute><ManageTrophies /></ProtectedAdminRoute>} />
         <Route path="/admin/groups" element={<ProtectedAdminRoute><GroupManagement /></ProtectedAdminRoute>} />
         <Route path="/admin/live-schedule" element={<ProtectedAdminRoute><AdminLiveSchedule /></ProtectedAdminRoute>} />
       </Routes>
