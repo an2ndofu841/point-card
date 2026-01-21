@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
@@ -122,38 +122,32 @@ export const UserHome = () => {
     return Date.now() - group.deletedAt <= GROUP_RETENTION_MS;
   });
 
-  const savedGroupId = userId ? loadSelectedGroupId(userId) : null;
-
-  // Determine active group (default to saved group, or first joined)
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
-
-  // Initial selection of group
-  useEffect(() => {
-    // If activeGroupId is null but we have groups, select the first one
-    if (activeGroupId === null && visibleGroups && visibleGroups.length > 0) {
-        const saved = savedGroupId && visibleGroups.find(g => g.id === savedGroupId) ? savedGroupId : null;
-        setActiveGroupId(saved ?? visibleGroups[0].id);
-    }
-    // Also, if we have a selected group but it's not in the list anymore (rare), fallback
-    if (activeGroupId !== null && visibleGroups && !visibleGroups.find(g => g.id === activeGroupId)) {
-        const saved = savedGroupId && visibleGroups.find(g => g.id === savedGroupId) ? savedGroupId : null;
-        if (visibleGroups.length > 0) setActiveGroupId(saved ?? visibleGroups[0].id);
-        else setActiveGroupId(null);
-    }
-  }, [visibleGroups, activeGroupId, savedGroupId]);
+  const hasInitializedGroup = useRef(false);
 
   useEffect(() => {
-    if (!visibleGroups || !savedGroupId) return;
-    if (!visibleGroups.find(g => g.id === savedGroupId)) return;
-    if (activeGroupId !== savedGroupId) {
-      setActiveGroupId(savedGroupId);
-    }
-  }, [visibleGroups, savedGroupId, activeGroupId]);
+    if (hasInitializedGroup.current) return;
+    if (!visibleGroups || visibleGroups.length === 0) return;
+    const saved = userId ? loadSelectedGroupId(userId) : null;
+    const next = saved && visibleGroups.find(g => g.id === saved) ? saved : visibleGroups[0].id;
+    setActiveGroupId(next);
+    if (userId) saveSelectedGroupId(userId, next);
+    hasInitializedGroup.current = true;
+  }, [visibleGroups, userId]);
 
   useEffect(() => {
-    if (!userId) return;
-    saveSelectedGroupId(userId, activeGroupId);
-  }, [userId, activeGroupId]);
+    if (!visibleGroups || visibleGroups.length === 0) return;
+    if (activeGroupId !== null && !visibleGroups.find(g => g.id === activeGroupId)) {
+      const next = visibleGroups[0].id;
+      setActiveGroupId(next);
+      if (userId) saveSelectedGroupId(userId, next);
+    }
+  }, [visibleGroups, activeGroupId, userId]);
+
+  const handleSelectGroup = (groupId: number) => {
+    setActiveGroupId(groupId);
+    if (userId) saveSelectedGroupId(userId, groupId);
+  };
 
   const activeGroup = visibleGroups?.find(g => g.id === activeGroupId);
   const activeGroupDeletedAt = activeGroup?.deletedAt || null;
@@ -640,10 +634,10 @@ export const UserHome = () => {
          <div className="relative z-10 mb-4">
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {/* Only show joined groups */}
-            {visibleGroups?.map(group => (
+                {visibleGroups?.map(group => (
                     <button
                         key={group.id}
-                        onClick={() => setActiveGroupId(group.id)}
+                        onClick={() => handleSelectGroup(group.id)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap
                             ${activeGroupId === group.id 
                                 ? 'bg-gray-900 text-white shadow-md' 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowLeft, Medal, ShieldCheck } from 'lucide-react';
@@ -47,8 +47,8 @@ const rarityLabel: Record<Trophy['rarity'], string> = {
 
 export const UserTrophies = () => {
   const { userId } = useCurrentUser();
-  const savedGroupId = userId ? loadSelectedGroupId(userId) : null;
   const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const hasInitializedGroup = useRef(false);
   const [trophies, setTrophies] = useState<Trophy[]>([]);
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
@@ -64,28 +64,28 @@ export const UserTrophies = () => {
   }, [userId]);
 
   useEffect(() => {
-    if (activeGroupId === null && groups && groups.length > 0) {
-      const saved = savedGroupId && groups.find(g => g.id === savedGroupId) ? savedGroupId : null;
-      setActiveGroupId(saved ?? groups[0].id);
-    }
-    if (activeGroupId !== null && groups && !groups.find(g => g.id === activeGroupId)) {
-      const saved = savedGroupId && groups.find(g => g.id === savedGroupId) ? savedGroupId : null;
-      setActiveGroupId(saved ?? groups[0]?.id ?? null);
-    }
-  }, [groups, activeGroupId, savedGroupId]);
+    if (hasInitializedGroup.current) return;
+    if (!groups || groups.length === 0) return;
+    const saved = userId ? loadSelectedGroupId(userId) : null;
+    const next = saved && groups.find(g => g.id === saved) ? saved : groups[0].id;
+    setActiveGroupId(next);
+    if (userId) saveSelectedGroupId(userId, next);
+    hasInitializedGroup.current = true;
+  }, [groups, userId]);
 
   useEffect(() => {
-    if (!groups || !savedGroupId) return;
-    if (!groups.find(g => g.id === savedGroupId)) return;
-    if (activeGroupId !== savedGroupId) {
-      setActiveGroupId(savedGroupId);
+    if (!groups || groups.length === 0) return;
+    if (activeGroupId !== null && !groups.find(g => g.id === activeGroupId)) {
+      const next = groups[0].id;
+      setActiveGroupId(next);
+      if (userId) saveSelectedGroupId(userId, next);
     }
-  }, [groups, savedGroupId, activeGroupId]);
+  }, [groups, activeGroupId, userId]);
 
-  useEffect(() => {
-    if (!userId) return;
-    saveSelectedGroupId(userId, activeGroupId);
-  }, [userId, activeGroupId]);
+  const handleSelectGroup = (groupId: number) => {
+    setActiveGroupId(groupId);
+    if (userId) saveSelectedGroupId(userId, groupId);
+  };
 
   const eventMap = useMemo(() => {
     const map: Record<number, LiveEvent> = {};
@@ -214,7 +214,7 @@ export const UserTrophies = () => {
           {groups?.map(group => (
             <button
               key={group.id}
-              onClick={() => setActiveGroupId(group.id)}
+              onClick={() => handleSelectGroup(group.id)}
               className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition ${
                 activeGroupId === group.id
                   ? 'bg-gray-900 text-white shadow-md'
