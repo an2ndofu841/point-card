@@ -29,6 +29,7 @@ export const Scanner = () => {
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
   const [eventStatus, setEventStatus] = useState<EventScanStatus | null>(null);
   const [isCheckingEvent, setIsCheckingEvent] = useState(false);
+  const [pendingPoints, setPendingPoints] = useState(0);
 
   // Get current admin group context
   const [groupId] = useState<number>(() => {
@@ -274,6 +275,12 @@ export const Scanner = () => {
 
     checkEventRegistration();
   }, [scanMode, scanResult, selectedEventId]);
+
+  useEffect(() => {
+    if (scanMode === 'points') {
+      setPendingPoints(0);
+    }
+  }, [scanResult?.id, scanMode]);
 
   const grantPoints = async (points: number) => {
     if (!scanResult) return;
@@ -619,22 +626,44 @@ export const Scanner = () => {
                     <>
                       {/* Action: Grant Points */}
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ポイント付与 ({group?.name})</p>
-                      <div className="grid grid-cols-2 gap-3 mb-6">
+                      <div className="grid grid-cols-3 gap-3 mb-4">
                         <button 
-                          onClick={() => grantPoints(1)}
+                          onClick={() => setPendingPoints(prev => prev + 1)}
                           className="bg-blue-50 text-blue-600 hover:bg-blue-100 py-4 rounded-xl font-bold shadow-sm transition flex flex-col items-center justify-center"
                         >
                           <span className="text-xl">+1</span>
                           <span className="text-[10px]">通常</span>
                         </button>
                         <button 
-                          onClick={() => grantPoints(5)}
+                          onClick={() => setPendingPoints(prev => prev + 5)}
                           className="bg-purple-50 text-purple-600 hover:bg-purple-100 py-4 rounded-xl font-bold shadow-sm transition flex flex-col items-center justify-center"
                         >
                           <span className="text-xl">+5</span>
                           <span className="text-[10px]">特別</span>
                         </button>
+                        <button 
+                          onClick={() => setPendingPoints(0)}
+                          className="bg-gray-100 text-gray-500 hover:bg-gray-200 py-4 rounded-xl font-bold shadow-sm transition flex flex-col items-center justify-center"
+                        >
+                          <span className="text-xl">削除</span>
+                          <span className="text-[10px]">リセット</span>
+                        </button>
                       </div>
+                      <div className="bg-gray-50 rounded-xl p-4 mb-6 flex items-center justify-between">
+                        <span className="text-sm font-bold text-gray-500">付与合計</span>
+                        <span className="text-2xl font-bold text-text-main">{pendingPoints}pt</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (pendingPoints <= 0) return;
+                          grantPoints(pendingPoints);
+                          setPendingPoints(0);
+                        }}
+                        disabled={pendingPoints <= 0}
+                        className="w-full bg-primary text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 hover:bg-primary-dark transition disabled:opacity-60 disabled:cursor-not-allowed mb-6"
+                      >
+                        ポイント付与
+                      </button>
 
                       {/* Action: Grant Design */}
                       {designs && designs.length > 0 && (
