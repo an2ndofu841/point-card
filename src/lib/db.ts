@@ -16,6 +16,7 @@ export interface UserMembership {
   totalPoints: number;
   currentRank?: string;
   selectedDesignId?: number;
+  memberId?: string;
   lastUpdated: number;
 }
 

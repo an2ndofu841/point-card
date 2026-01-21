@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '../lib/db';
 import { supabase, isMock } from '../lib/supabase';
 import { useCurrentUser } from '../hooks/useCurrentUser';
+import { generateMemberId } from '../lib/memberId';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const JoinGroup = () => {
@@ -102,6 +103,7 @@ export const JoinGroup = () => {
         }
 
         // 4. Create membership (Local & Supabase)
+        let memberId = generateMemberId();
         
         // Sync to Supabase first (if not mock)
         // Note: Ideally we'd have a 'memberships' table.
@@ -110,17 +112,18 @@ export const JoinGroup = () => {
         
         if (!isMock) {
              try {
-                 await supabase
+                 const { error } = await supabase
                   .from('user_memberships')
                   .insert({
                       user_id: userId,
                       group_id: gId,
                       points: 0,
                       total_points: 0,
-                      current_rank: 'REGULAR'
+                      current_rank: 'REGULAR',
+                      member_id: memberId
                   });
+                 if (error) throw error;
              } catch (e) {
-                 // Table might not exist, just log warning
                  console.warn("Failed to sync membership to Supabase (table missing?)", e);
              }
         }
@@ -131,6 +134,7 @@ export const JoinGroup = () => {
             points: 0,
             totalPoints: 0,
             currentRank: 'REGULAR',
+            memberId,
             lastUpdated: Date.now()
         });
 

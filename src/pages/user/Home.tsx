@@ -7,6 +7,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { supabase, isMock } from '../../lib/supabase';
+import { formatMemberId, generateMemberId } from '../../lib/memberId';
 
 export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
@@ -195,17 +196,19 @@ export const UserHome = () => {
                             totalPoints: rm.total_points || 0,
                             currentRank: rm.current_rank || 'REGULAR',
                             selectedDesignId: rm.selected_design_id, // Sync selected design
+                            memberId: rm.member_id || undefined,
                             lastUpdated: Date.now()
                         });
                     } else {
                         // Update local if server has newer data OR different points OR different design
                         // Since server is source of truth for points granted by admin, we trust server points here.
-                        if (exists.points !== rm.points || exists.totalPoints !== rm.total_points || exists.selectedDesignId !== rm.selected_design_id) {
+                        if (exists.points !== rm.points || exists.totalPoints !== rm.total_points || exists.selectedDesignId !== rm.selected_design_id || (!exists.memberId && rm.member_id)) {
                              await db.userMemberships.update(exists.id!, {
                                 points: rm.points || 0,
                                 totalPoints: rm.total_points || 0,
                                 currentRank: rm.current_rank || 'REGULAR',
                                 selectedDesignId: rm.selected_design_id, // Sync selected design
+                                memberId: rm.member_id || exists.memberId,
                                 lastUpdated: Date.now()
                             });
                         }
@@ -226,6 +229,40 @@ export const UserHome = () => {
 
   const userPoints = membership?.points ?? 0;
   const totalPoints = membership?.totalPoints ?? 0;
+  const memberIdDisplay = formatMemberId(membership?.memberId);
+
+  useEffect(() => {
+    const ensureMemberId = async () => {
+      if (!membership || membership.memberId || !userId || !activeGroupId) return;
+      const maxAttempts = 3;
+      let nextId = generateMemberId();
+
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        try {
+          if (!isMock) {
+            const { error } = await supabase
+              .from('user_memberships')
+              .update({ member_id: nextId })
+              .eq('user_id', userId)
+              .eq('group_id', activeGroupId);
+            if (error) throw error;
+          }
+
+          if (membership.id) {
+            await db.userMemberships.update(membership.id, { memberId: nextId });
+          } else {
+            await db.userMemberships.where({ userId, groupId: activeGroupId }).modify({ memberId: nextId });
+          }
+          return;
+        } catch (err) {
+          console.warn('Failed to set member id, retrying...', err);
+          nextId = generateMemberId();
+        }
+      }
+    };
+
+    ensureMemberId();
+  }, [membership?.id, membership?.memberId, userId, activeGroupId]);
 
   const [levelConfigs, setLevelConfigs] = useState<LevelConfig[]>([]);
   const [nextLive, setNextLive] = useState<LiveEvent | null>(null);
@@ -663,7 +700,7 @@ export const UserHome = () => {
                    </div>
                    <div>
                      <p className="text-[10px] opacity-60 font-mono mb-1 uppercase text-right drop-shadow-sm">Member ID</p>
-                     <p className="text-lg font-mono tracking-widest opacity-90 drop-shadow-sm">0000 1234 5678</p>
+                     <p className="text-lg font-mono tracking-widest opacity-90 drop-shadow-sm">{memberIdDisplay}</p>
                    </div>
                 </div>
              </div>
