@@ -10,9 +10,9 @@ export const AdminDashboard = () => {
   
   // Group Selection Logic
   const groups = useLiveQuery(() => db.groups.toArray());
-  const [selectedGroupId, setSelectedGroupId] = useState<number>(() => {
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(() => {
       const saved = localStorage.getItem('admin_selected_group_id');
-      return saved ? parseInt(saved) : 1;
+      return saved ? parseInt(saved) : null;
   });
 
   // Fetch Groups from Supabase on mount (sync logic)
@@ -62,7 +62,7 @@ export const AdminDashboard = () => {
   // Validate selectedGroupId when groups change
   useEffect(() => {
       if (groups && groups.length > 0) {
-          const exists = groups.find(g => g.id === selectedGroupId);
+          const exists = selectedGroupId !== null && groups.find(g => g.id === selectedGroupId);
           if (!exists) {
               setSelectedGroupId(groups[0].id);
           }
@@ -70,19 +70,20 @@ export const AdminDashboard = () => {
   }, [groups, selectedGroupId]);
 
   useEffect(() => {
-      if (selectedGroupId) {
+      if (selectedGroupId !== null) {
           localStorage.setItem('admin_selected_group_id', selectedGroupId.toString());
       }
   }, [selectedGroupId]);
 
-  const currentGroup = groups?.find(g => g.id === selectedGroupId);
+  const currentGroup = selectedGroupId !== null ? groups?.find(g => g.id === selectedGroupId) : undefined;
 
   // Filter pending scans by selected group
-  const pendingCount = useLiveQuery(() => 
-    db.pendingScans
+  const pendingCount = useLiveQuery(() => {
+    if (selectedGroupId === null) return Promise.resolve(0);
+    return db.pendingScans
       .filter(s => !s.synced && s.groupId === selectedGroupId)
-      .count()
-  , [selectedGroupId]);
+      .count();
+  }, [selectedGroupId]);
   
   const count = pendingCount ?? 0;
 
@@ -106,10 +107,11 @@ export const AdminDashboard = () => {
             <h1 className="text-2xl font-bold text-text-main">運営ダッシュボード</h1>
             <div className="relative mt-1 inline-block">
                 <select 
-                    value={selectedGroupId}
-                    onChange={(e) => setSelectedGroupId(parseInt(e.target.value))}
+                    value={selectedGroupId ?? ''}
+                    onChange={(e) => setSelectedGroupId(e.target.value ? parseInt(e.target.value) : null)}
                     className="appearance-none bg-gray-50 border border-gray-200 text-text-main font-bold text-sm py-2 pl-4 pr-10 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50 cursor-pointer"
                 >
+                    <option value="" disabled>グループを選択</option>
                     {groups?.map(g => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
