@@ -26,6 +26,7 @@ import { ManageDesigns } from './pages/admin/DesignConfig';
 import { GroupManagement } from './pages/admin/GroupManagement';
 import { AdminLiveSchedule } from './pages/admin/LiveSchedule';
 import { ManageTrophies } from './pages/admin/Trophies';
+import { LevelConfigPage } from './pages/admin/LevelConfig';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { useSyncGroups } from './hooks/useSyncGroups';
@@ -100,6 +101,7 @@ function App() {
         <Route path="/admin/ranks" element={<ProtectedAdminRoute><RankConfigPage /></ProtectedAdminRoute>} />
         <Route path="/admin/designs" element={<ProtectedAdminRoute><ManageDesigns /></ProtectedAdminRoute>} />
         <Route path="/admin/trophies" element={<ProtectedAdminRoute><ManageTrophies /></ProtectedAdminRoute>} />
+        <Route path="/admin/levels" element={<ProtectedAdminRoute><LevelConfigPage /></ProtectedAdminRoute>} />
         <Route path="/admin/groups" element={<ProtectedAdminRoute><GroupManagement /></ProtectedAdminRoute>} />
         <Route path="/admin/live-schedule" element={<ProtectedAdminRoute><AdminLiveSchedule /></ProtectedAdminRoute>} />
       </Routes>

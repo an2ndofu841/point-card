@@ -58,6 +58,22 @@ export const UserHome = () => {
 
   const userName = userProfile?.name || 'ゲストさん';
 
+  type LevelConfig = {
+    level: number;
+    required_points: number;
+  };
+
+  const MAX_LEVEL = 100;
+  const buildDefaultLevels = () => {
+    const levels: LevelConfig[] = [];
+    for (let level = 1; level <= MAX_LEVEL; level += 1) {
+      const step = level - 1;
+      const required = Math.max(0, Math.floor(step * step * 5 + step * 15));
+      levels.push({ level, required_points: required });
+    }
+    return levels;
+  };
+
   // Fetch All Groups User Belongs To (Combined query to avoid render loops)
   const groups = useLiveQuery(async () => {
     if (!userId) return [];
@@ -171,6 +187,72 @@ export const UserHome = () => {
   const userPoints = membership?.points ?? 0;
   const totalPoints = membership?.totalPoints ?? 0;
 
+  const [levelConfigs, setLevelConfigs] = useState<LevelConfig[]>([]);
+
+  useEffect(() => {
+    const loadLevels = async () => {
+      if (!activeGroupId) {
+        setLevelConfigs([]);
+        return;
+      }
+      if (isMock) {
+        setLevelConfigs(buildDefaultLevels());
+        return;
+      }
+      const { data, error } = await supabase
+        .from('level_configs')
+        .select('level, required_points')
+        .eq('group_id', activeGroupId)
+        .order('level', { ascending: true });
+
+      if (error) {
+        console.error('Failed to fetch level configs', error);
+        setLevelConfigs(buildDefaultLevels());
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        setLevelConfigs(buildDefaultLevels());
+        return;
+      }
+
+      setLevelConfigs(data as LevelConfig[]);
+    };
+
+    loadLevels();
+  }, [activeGroupId]);
+
+  const sortedLevels = (levelConfigs.length > 0 ? levelConfigs : buildDefaultLevels()).sort(
+    (a, b) => a.level - b.level
+  );
+
+  const resolveLevelProgress = () => {
+    if (sortedLevels.length === 0) {
+      return { level: 1, current: 0, next: 1, progress: 0 };
+    }
+    let currentLevel = 1;
+    let currentRequired = 0;
+    let nextRequired = sortedLevels[0].required_points;
+
+    for (const level of sortedLevels) {
+      if (totalPoints >= level.required_points) {
+        currentLevel = level.level;
+        currentRequired = level.required_points;
+      }
+    }
+
+    const nextLevel = Math.min(currentLevel + 1, MAX_LEVEL);
+    const nextConfig = sortedLevels.find(item => item.level === nextLevel);
+    nextRequired = nextConfig ? nextConfig.required_points : currentRequired;
+
+    const denom = Math.max(1, nextRequired - currentRequired);
+    const progress = currentLevel >= MAX_LEVEL ? 1 : Math.min(1, Math.max(0, (totalPoints - currentRequired) / denom));
+
+    return { level: currentLevel, current: currentRequired, next: nextRequired, progress };
+  };
+
+  const levelState = resolveLevelProgress();
+
   // Fetch Rank Configs for Active Group
   const ranks = useLiveQuery(() => 
     activeGroupId ? db.rankConfigs.where('groupId').equals(activeGroupId).sortBy('minPoints') : []
@@ -276,7 +358,28 @@ export const UserHome = () => {
              </div>
              <div>
                <h1 className="text-sm font-bold text-gray-500">こんにちは</h1>
-               <p className="text-lg font-bold text-text-main -mt-1">{userName}</p>
+               <div className="flex items-center gap-2 -mt-1">
+                 <p className="text-lg font-bold text-text-main">{userName}</p>
+                 <span className="text-[11px] font-bold bg-gray-900 text-white px-2 py-0.5 rounded-full">
+                   Lv.{levelState.level}
+                 </span>
+               </div>
+               <div className="mt-2 w-40">
+                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                   <div
+                     className="h-full bg-primary"
+                     style={{ width: `${Math.round(levelState.progress * 100)}%` }}
+                   />
+                 </div>
+                 <div className="flex items-center justify-between text-[10px] text-gray-400 mt-1">
+                   <span>{levelState.current}pt</span>
+                   <span>
+                     {levelState.level >= MAX_LEVEL
+                       ? 'MAX'
+                       : `次のLvまで ${Math.max(0, levelState.next - totalPoints)}pt`}
+                   </span>
+                 </div>
+               </div>
              </div>
            </div>
            <Link to="/user/settings" className="p-2.5 rounded-full hover:bg-gray-50 transition border border-transparent hover:border-gray-200">
