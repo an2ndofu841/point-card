@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, MapPin, Clock, UserPlus, CheckCircle } from 'lucide-react';
 
 type LiveEvent = {
@@ -41,7 +42,7 @@ const toDisplayTime = (iso?: string | null) => {
 
 export const UserLiveSchedule = () => {
   const { userId } = useCurrentUser();
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -73,6 +74,11 @@ export const UserLiveSchedule = () => {
       setActiveGroupId(groups[0]?.id ?? null);
     }
   }, [groups, activeGroupId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    saveSelectedGroupId(userId, activeGroupId);
+  }, [userId, activeGroupId]);
 
   useEffect(() => {
     const syncEvents = async () => {

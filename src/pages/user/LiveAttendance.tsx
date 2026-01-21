@@ -5,6 +5,7 @@ import { ArrowLeft, CalendarCheck, Flame, History } from 'lucide-react';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 
 type AttendanceSummary = {
   user_id: string;
@@ -30,7 +31,7 @@ const formatDate = (value: string) => {
 
 export const UserLiveAttendance = () => {
   const { userId } = useCurrentUser();
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
   const [checkins, setCheckins] = useState<Checkin[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +52,11 @@ export const UserLiveAttendance = () => {
       setActiveGroupId(groups[0]?.id ?? null);
     }
   }, [groups, activeGroupId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    saveSelectedGroupId(userId, activeGroupId);
+  }, [userId, activeGroupId]);
 
   useEffect(() => {
     const fetchAttendance = async () => {

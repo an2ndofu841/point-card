@@ -8,6 +8,7 @@ import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { supabase, isMock } from '../../lib/supabase';
 import { formatMemberId, generateMemberId } from '../../lib/memberId';
+import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 
 export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
@@ -121,8 +122,8 @@ export const UserHome = () => {
     return Date.now() - group.deletedAt <= GROUP_RETENTION_MS;
   });
 
-  // Determine active group (default to first joined, or null if none)
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  // Determine active group (default to saved group, or first joined)
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
 
   // Initial selection of group
   useEffect(() => {
@@ -136,6 +137,11 @@ export const UserHome = () => {
         else setActiveGroupId(null);
     }
   }, [visibleGroups, activeGroupId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    saveSelectedGroupId(userId, activeGroupId);
+  }, [userId, activeGroupId]);
 
   const activeGroup = visibleGroups?.find(g => g.id === activeGroupId);
   const activeGroupDeletedAt = activeGroup?.deletedAt || null;

@@ -5,6 +5,7 @@ import { ArrowLeft, Medal, ShieldCheck } from 'lucide-react';
 import { db } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
+import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 
 type Trophy = {
   id: number;
@@ -46,7 +47,7 @@ const rarityLabel: Record<Trophy['rarity'], string> = {
 
 export const UserTrophies = () => {
   const { userId } = useCurrentUser();
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
   const [trophies, setTrophies] = useState<Trophy[]>([]);
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [summary, setSummary] = useState<AttendanceSummary | null>(null);
@@ -69,6 +70,11 @@ export const UserTrophies = () => {
       setActiveGroupId(groups[0]?.id ?? null);
     }
   }, [groups, activeGroupId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    saveSelectedGroupId(userId, activeGroupId);
+  }, [userId, activeGroupId]);
 
   const eventMap = useMemo(() => {
     const map: Record<number, LiveEvent> = {};
