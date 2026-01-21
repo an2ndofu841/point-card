@@ -122,21 +122,25 @@ export const UserHome = () => {
     return Date.now() - group.deletedAt <= GROUP_RETENTION_MS;
   });
 
+  const savedGroupId = userId ? loadSelectedGroupId(userId) : null;
+
   // Determine active group (default to saved group, or first joined)
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
 
   // Initial selection of group
   useEffect(() => {
     // If activeGroupId is null but we have groups, select the first one
     if (activeGroupId === null && visibleGroups && visibleGroups.length > 0) {
-        setActiveGroupId(visibleGroups[0].id);
+        const saved = savedGroupId && visibleGroups.find(g => g.id === savedGroupId) ? savedGroupId : null;
+        setActiveGroupId(saved ?? visibleGroups[0].id);
     }
     // Also, if we have a selected group but it's not in the list anymore (rare), fallback
     if (activeGroupId !== null && visibleGroups && !visibleGroups.find(g => g.id === activeGroupId)) {
-        if (visibleGroups.length > 0) setActiveGroupId(visibleGroups[0].id);
+        const saved = savedGroupId && visibleGroups.find(g => g.id === savedGroupId) ? savedGroupId : null;
+        if (visibleGroups.length > 0) setActiveGroupId(saved ?? visibleGroups[0].id);
         else setActiveGroupId(null);
     }
-  }, [visibleGroups, activeGroupId]);
+  }, [visibleGroups, activeGroupId, savedGroupId]);
 
   useEffect(() => {
     if (!userId) return;

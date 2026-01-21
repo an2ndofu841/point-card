@@ -42,7 +42,8 @@ const toDisplayTime = (iso?: string | null) => {
 
 export const UserLiveSchedule = () => {
   const { userId } = useCurrentUser();
-  const [activeGroupId, setActiveGroupId] = useState<number | null>(() => loadSelectedGroupId(userId));
+  const savedGroupId = userId ? loadSelectedGroupId(userId) : null;
+  const [activeGroupId, setActiveGroupId] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -68,12 +69,14 @@ export const UserLiveSchedule = () => {
 
   useEffect(() => {
     if (activeGroupId === null && groups && groups.length > 0) {
-      setActiveGroupId(groups[0].id);
+      const saved = savedGroupId && groups.find(g => g.id === savedGroupId) ? savedGroupId : null;
+      setActiveGroupId(saved ?? groups[0].id);
     }
     if (activeGroupId !== null && groups && !groups.find(g => g.id === activeGroupId)) {
-      setActiveGroupId(groups[0]?.id ?? null);
+      const saved = savedGroupId && groups.find(g => g.id === savedGroupId) ? savedGroupId : null;
+      setActiveGroupId(saved ?? groups[0]?.id ?? null);
     }
-  }, [groups, activeGroupId]);
+  }, [groups, activeGroupId, savedGroupId]);
 
   useEffect(() => {
     if (!userId) return;
