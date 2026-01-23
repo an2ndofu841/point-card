@@ -14,6 +14,7 @@ type AdminMembership = {
   totalPoints: number;
   currentRank?: string | null;
   memberId?: string | null;
+  displayName?: string | null;
   updatedAt?: string | null;
 };
 
@@ -42,6 +43,9 @@ export const ManageMembers = () => {
     try {
       if (isMock) {
         const local = await db.userMemberships.where('groupId').equals(groupId).toArray();
+        const profileMap = new Map(
+          (await db.userCache.toArray()).map(profile => [profile.id, profile.name || null])
+        );
         setMembers(local.map(m => ({
           id: m.id ?? Math.random(),
           userId: m.userId,
@@ -50,6 +54,7 @@ export const ManageMembers = () => {
           totalPoints: m.totalPoints,
           currentRank: m.currentRank,
           memberId: m.memberId,
+          displayName: profileMap.get(m.userId) || null,
           updatedAt: undefined
         })));
         return;
@@ -76,6 +81,24 @@ export const ManageMembers = () => {
         memberId: row.member_id,
         updatedAt: row.updated_at
       }));
+
+      if (list.length > 0) {
+        const ids = list.map(m => m.userId);
+        const { data: profiles, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('user_id, display_name')
+          .in('user_id', ids);
+        if (profileError) {
+          console.error('Failed to fetch user profiles', profileError);
+        } else {
+          const profileMap = new Map(
+            (profiles || []).map(profile => [profile.user_id, profile.display_name || null])
+          );
+          list.forEach(item => {
+            item.displayName = profileMap.get(item.userId) || null;
+          });
+        }
+      }
       setMembers(list);
     } finally {
       setLoading(false);
@@ -93,10 +116,12 @@ export const ManageMembers = () => {
     return members.filter(member => {
       const userId = member.userId.toLowerCase();
       const memberId = (member.memberId || '').toLowerCase();
+      const displayName = (member.displayName || '').toLowerCase();
       const formattedMemberId = formatMemberId(member.memberId).toLowerCase();
       const compactMemberId = formattedMemberId.replace(/\s+/g, '');
       return (
         userId.includes(query) ||
+        displayName.includes(query) ||
         memberId.includes(compactQuery) ||
         formattedMemberId.includes(query) ||
         compactMemberId.includes(compactQuery)
@@ -253,7 +278,7 @@ export const ManageMembers = () => {
           <input
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder="会員番号 / ユーザーID で検索"
+            placeholder="会員番号 / ユーザーID / 名前 で検索"
             className="w-full bg-transparent outline-none text-sm font-bold text-text-main"
           />
           {searchText && (
@@ -278,6 +303,14 @@ export const ManageMembers = () => {
               return (
                 <div key={member.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
                   <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="text-xs text-gray-400 font-bold">ユーザー名</div>
+                        <div className="font-bold text-lg">
+                          {member.displayName || '未設定'}
+                        </div>
+                      </div>
+                    </div>
                     <div className="flex items-center justify-between gap-3">
                       <div>
                         <div className="text-xs text-gray-400 font-bold">会員番号</div>

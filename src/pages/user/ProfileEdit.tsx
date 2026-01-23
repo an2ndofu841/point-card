@@ -101,6 +101,19 @@ export const ProfileEdit = () => {
          if (error) {
              console.error("Failed to sync profile to Supabase", error);
          }
+
+         // Save public profile for admin view
+         const { error: profileError } = await supabase
+           .from('user_profiles')
+           .upsert({
+             user_id: userId,
+             display_name: name,
+             avatar_url: avatarUrl || null,
+             updated_at: new Date().toISOString()
+           }, { onConflict: 'user_id' });
+         if (profileError) {
+           console.error("Failed to sync user_profiles", profileError);
+         }
       }
       
       setTimeout(() => {
