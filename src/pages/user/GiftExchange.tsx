@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Gift } from '../../lib/db';
@@ -66,12 +66,15 @@ export const GiftExchange = () => {
 
   const [processingId, setProcessingId] = useState<number | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const isExchangingRef = useRef(false);
 
   const handleExchange = async (gift: Gift) => {
+    if (isExchangingRef.current) return;
     if (!userId || !groupId || !membership?.id) return;
     if (userPoints < gift.pointsRequired) return;
     if (!window.confirm(`${gift.name}を${gift.pointsRequired}ptで交換しますか？`)) return;
 
+    isExchangingRef.current = true;
     setProcessingId(gift.id!);
     
     try {
@@ -176,6 +179,7 @@ export const GiftExchange = () => {
       alert("エラーが発生しました");
     } finally {
       setProcessingId(null);
+      isExchangingRef.current = false;
     }
   };
 
