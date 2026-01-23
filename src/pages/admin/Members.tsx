@@ -71,7 +71,7 @@ export const ManageMembers = () => {
         return;
       }
 
-      const list = (data || []).map(row => ({
+      const list: AdminMembership[] = (data || []).map(row => ({
         id: row.id,
         userId: row.user_id,
         groupId: row.group_id,
@@ -79,6 +79,7 @@ export const ManageMembers = () => {
         totalPoints: row.total_points ?? 0,
         currentRank: row.current_rank,
         memberId: row.member_id,
+        displayName: null,
         updatedAt: row.updated_at
       }));
 
