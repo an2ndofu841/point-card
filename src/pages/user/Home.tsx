@@ -52,6 +52,16 @@ export const UserHome = () => {
                         lastUpdated: Date.now() 
                     });
                 }
+
+                // Also sync to public profiles for admin view
+                await supabase
+                  .from('user_profiles')
+                  .upsert({
+                    user_id: userId,
+                    display_name: display_name || null,
+                    avatar_url: avatar_url || null,
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' });
             }
           }
       };
