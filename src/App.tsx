@@ -29,6 +29,7 @@ import { ManageTrophies } from './pages/admin/Trophies';
 import { LevelConfigPage } from './pages/admin/LevelConfig';
 import { ManageLiveAnnouncements } from './pages/admin/LiveAnnouncements';
 import { LiveAttendanceCounts } from './pages/admin/LiveAttendanceCounts';
+import { ManageMembers } from './pages/admin/Members';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
 import { useSyncGroups } from './hooks/useSyncGroups';
@@ -108,6 +109,7 @@ function App() {
         <Route path="/admin/live-attendance" element={<ProtectedAdminRoute><LiveAttendanceCounts /></ProtectedAdminRoute>} />
         <Route path="/admin/groups" element={<ProtectedAdminRoute><GroupManagement /></ProtectedAdminRoute>} />
         <Route path="/admin/live-schedule" element={<ProtectedAdminRoute><AdminLiveSchedule /></ProtectedAdminRoute>} />
+        <Route path="/admin/members" element={<ProtectedAdminRoute><ManageMembers /></ProtectedAdminRoute>} />
       </Routes>
     </>
   );
