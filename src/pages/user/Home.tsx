@@ -190,6 +190,16 @@ export const UserHome = () => {
             // Important: Even if remoteMemberships is empty array, we should process it if we want to handle deletion, 
             // but here we focus on updates/restores.
             if (remoteMemberships) {
+                const remoteGroupIds = new Set(remoteMemberships.map(rm => rm.group_id));
+
+                // Remove local memberships that no longer exist on server
+                const localMemberships = await db.userMemberships.where('userId').equals(userId).toArray();
+                for (const lm of localMemberships) {
+                    if (!remoteGroupIds.has(lm.groupId)) {
+                        await db.userMemberships.delete(lm.id!);
+                    }
+                }
+
                 // Restore/Sync memberships
                 for (const rm of remoteMemberships) {
                     const exists = await db.userMemberships.where({ userId: userId, groupId: rm.group_id }).first();
