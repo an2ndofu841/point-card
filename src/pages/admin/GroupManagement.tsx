@@ -75,11 +75,14 @@ export const GroupManagement = () => {
       const currentGroup = editingGroupId ? groups?.find(g => g.id === editingGroupId) : undefined;
       const normalizeUrl = (value?: string) => {
         const trimmed = value?.trim();
-        return trimmed ? trimmed : null;
+        return trimmed ? trimmed : undefined;
       };
-      const resolveUrl = (value?: string, fallback?: string) => {
+      const resolveUrlForDb = (value?: string, fallback?: string) => {
         const normalized = normalizeUrl(value);
-        return normalized ?? (fallback ?? null);
+        return normalized ?? fallback;
+      };
+      const resolveUrlForSupabase = (value?: string, fallback?: string) => {
+        return resolveUrlForDb(value, fallback) ?? null;
       };
 
       if (isMock) {
@@ -89,13 +92,13 @@ export const GroupManagement = () => {
                 name: formData.name,
                 themeColor: formData.themeColor || '#2563EB',
                 logoUrl: formData.logoUrl,
-                xUrl: resolveUrl(formData.xUrl, currentGroup?.xUrl),
-                instagramUrl: resolveUrl(formData.instagramUrl, currentGroup?.instagramUrl),
-                tiktokUrl: resolveUrl(formData.tiktokUrl, currentGroup?.tiktokUrl),
-                youtubeUrl: resolveUrl(formData.youtubeUrl, currentGroup?.youtubeUrl),
-                itunesUrl: resolveUrl(formData.itunesUrl, currentGroup?.itunesUrl),
-                spotifyUrl: resolveUrl(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                websiteUrl: resolveUrl(formData.websiteUrl, currentGroup?.websiteUrl)
+                xUrl: resolveUrlForDb(formData.xUrl, currentGroup?.xUrl),
+                instagramUrl: resolveUrlForDb(formData.instagramUrl, currentGroup?.instagramUrl),
+                tiktokUrl: resolveUrlForDb(formData.tiktokUrl, currentGroup?.tiktokUrl),
+                youtubeUrl: resolveUrlForDb(formData.youtubeUrl, currentGroup?.youtubeUrl),
+                itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
+                spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
+                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl)
             });
           } else {
             // Local Create Mock
@@ -103,13 +106,13 @@ export const GroupManagement = () => {
                 name: formData.name,
                 themeColor: formData.themeColor || '#2563EB',
                 logoUrl: formData.logoUrl,
-                xUrl: normalizeUrl(formData.xUrl) || undefined,
-                instagramUrl: normalizeUrl(formData.instagramUrl) || undefined,
-                tiktokUrl: normalizeUrl(formData.tiktokUrl) || undefined,
-                youtubeUrl: normalizeUrl(formData.youtubeUrl) || undefined,
-                itunesUrl: normalizeUrl(formData.itunesUrl) || undefined,
-                spotifyUrl: normalizeUrl(formData.spotifyUrl) || undefined,
-                websiteUrl: normalizeUrl(formData.websiteUrl) || undefined,
+                xUrl: normalizeUrl(formData.xUrl),
+                instagramUrl: normalizeUrl(formData.instagramUrl),
+                tiktokUrl: normalizeUrl(formData.tiktokUrl),
+                youtubeUrl: normalizeUrl(formData.youtubeUrl),
+                itunesUrl: normalizeUrl(formData.itunesUrl),
+                spotifyUrl: normalizeUrl(formData.spotifyUrl),
+                websiteUrl: normalizeUrl(formData.websiteUrl),
                 deletedAt: null
             } as any);
           }
@@ -122,13 +125,13 @@ export const GroupManagement = () => {
                     name: formData.name,
                     theme_color: formData.themeColor || '#2563EB',
                     logo_url: formData.logoUrl,
-                    x_url: resolveUrl(formData.xUrl, currentGroup?.xUrl),
-                    instagram_url: resolveUrl(formData.instagramUrl, currentGroup?.instagramUrl),
-                    tiktok_url: resolveUrl(formData.tiktokUrl, currentGroup?.tiktokUrl),
-                    youtube_url: resolveUrl(formData.youtubeUrl, currentGroup?.youtubeUrl),
-                    itunes_url: resolveUrl(formData.itunesUrl, currentGroup?.itunesUrl),
-                    spotify_url: resolveUrl(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                    website_url: resolveUrl(formData.websiteUrl, currentGroup?.websiteUrl)
+                    x_url: resolveUrlForSupabase(formData.xUrl, currentGroup?.xUrl),
+                    instagram_url: resolveUrlForSupabase(formData.instagramUrl, currentGroup?.instagramUrl),
+                    tiktok_url: resolveUrlForSupabase(formData.tiktokUrl, currentGroup?.tiktokUrl),
+                    youtube_url: resolveUrlForSupabase(formData.youtubeUrl, currentGroup?.youtubeUrl),
+                    itunes_url: resolveUrlForSupabase(formData.itunesUrl, currentGroup?.itunesUrl),
+                    spotify_url: resolveUrlForSupabase(formData.spotifyUrl, currentGroup?.spotifyUrl),
+                    website_url: resolveUrlForSupabase(formData.websiteUrl, currentGroup?.websiteUrl)
                 })
                 .eq('id', editingGroupId);
             
@@ -139,13 +142,13 @@ export const GroupManagement = () => {
                 name: formData.name,
                 themeColor: formData.themeColor,
                 logoUrl: formData.logoUrl,
-                xUrl: resolveUrl(formData.xUrl, currentGroup?.xUrl),
-                instagramUrl: resolveUrl(formData.instagramUrl, currentGroup?.instagramUrl),
-                tiktokUrl: resolveUrl(formData.tiktokUrl, currentGroup?.tiktokUrl),
-                youtubeUrl: resolveUrl(formData.youtubeUrl, currentGroup?.youtubeUrl),
-                itunesUrl: resolveUrl(formData.itunesUrl, currentGroup?.itunesUrl),
-                spotifyUrl: resolveUrl(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                websiteUrl: resolveUrl(formData.websiteUrl, currentGroup?.websiteUrl)
+                xUrl: resolveUrlForDb(formData.xUrl, currentGroup?.xUrl),
+                instagramUrl: resolveUrlForDb(formData.instagramUrl, currentGroup?.instagramUrl),
+                tiktokUrl: resolveUrlForDb(formData.tiktokUrl, currentGroup?.tiktokUrl),
+                youtubeUrl: resolveUrlForDb(formData.youtubeUrl, currentGroup?.youtubeUrl),
+                itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
+                spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
+                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl)
             });
           } else {
             // 1. Save to Supabase first to get ID
@@ -155,13 +158,13 @@ export const GroupManagement = () => {
                     name: formData.name,
                     theme_color: formData.themeColor || '#2563EB',
                     logo_url: formData.logoUrl,
-                    x_url: normalizeUrl(formData.xUrl),
-                    instagram_url: normalizeUrl(formData.instagramUrl),
-                    tiktok_url: normalizeUrl(formData.tiktokUrl),
-                    youtube_url: normalizeUrl(formData.youtubeUrl),
-                    itunes_url: normalizeUrl(formData.itunesUrl),
-                    spotify_url: normalizeUrl(formData.spotifyUrl),
-                    website_url: normalizeUrl(formData.websiteUrl)
+                    x_url: normalizeUrl(formData.xUrl) ?? null,
+                    instagram_url: normalizeUrl(formData.instagramUrl) ?? null,
+                    tiktok_url: normalizeUrl(formData.tiktokUrl) ?? null,
+                    youtube_url: normalizeUrl(formData.youtubeUrl) ?? null,
+                    itunes_url: normalizeUrl(formData.itunesUrl) ?? null,
+                    spotify_url: normalizeUrl(formData.spotifyUrl) ?? null,
+                    website_url: normalizeUrl(formData.websiteUrl) ?? null
                 })
                 .select()
                 .single();
