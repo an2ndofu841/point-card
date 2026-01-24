@@ -41,8 +41,7 @@ export const GroupManagement = () => {
   const [isSavingRule, setIsSavingRule] = useState(false);
   const [ruleForm, setRuleForm] = useState({
     mode: 'FULL' as 'FULL' | 'CAP',
-    capPoints: '',
-    active: true
+    capPoints: ''
   });
 
   const loadTransferRules = async (targetGroupId?: number | null) => {
@@ -286,7 +285,7 @@ export const GroupManagement = () => {
         source_group_id: null,
         mode: ruleForm.mode,
         cap_points: ruleForm.mode === 'CAP' ? Number(ruleForm.capPoints || 0) : null,
-        active: ruleForm.active
+        active: true
       };
 
       if (isMock) {
@@ -320,28 +319,13 @@ export const GroupManagement = () => {
         if (error) throw error;
       }
 
-      setRuleForm({ mode: 'FULL', capPoints: '', active: true });
+      setRuleForm({ mode: 'FULL', capPoints: '' });
       await loadTransferRules(editingGroupId);
     } catch (err) {
       console.error('Failed to save transfer rule', err);
       alert('引き継ぎ設定の保存に失敗しました');
     } finally {
       setIsSavingRule(false);
-    }
-  };
-
-  const handleToggleRule = async (ruleId: number, active: boolean) => {
-    try {
-      if (isMock) {
-        await db.transferRules.update(ruleId, { active });
-      } else {
-        const { error } = await supabase.from('transfer_rules').update({ active }).eq('id', ruleId);
-        if (error) throw error;
-      }
-      setTransferRules(prev => prev.map(rule => rule.id === ruleId ? { ...rule, active } : rule));
-    } catch (err) {
-      console.error('Failed to update rule', err);
-      alert('更新に失敗しました');
     }
   };
 
@@ -377,7 +361,7 @@ export const GroupManagement = () => {
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
-    setRuleForm({ mode: 'FULL', capPoints: '', active: true });
+    setRuleForm({ mode: 'FULL', capPoints: '' });
     loadTransferRules(group.id!);
   };
 
@@ -556,17 +540,6 @@ export const GroupManagement = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-400">有効</span>
-                      <button
-                        onClick={() => setRuleForm({ ...ruleForm, active: !ruleForm.active })}
-                        className="flex items-center gap-2 text-sm font-bold text-gray-600"
-                      >
-                        {ruleForm.active ? <ToggleRight size={20} className="text-primary" /> : <ToggleLeft size={20} className="text-gray-300" />}
-                        {ruleForm.active ? 'ON' : 'OFF'}
-                      </button>
-                    </div>
-
                     <button
                       onClick={handleSaveRule}
                       disabled={isSavingRule}
@@ -583,17 +556,11 @@ export const GroupManagement = () => {
                             <div key={rule.id} className="bg-white rounded-xl p-3 border border-gray-100 flex items-center justify-between">
                               <div>
                         <p className="font-bold text-sm">任意の解散グループ</p>
-                                <p className="text-xs text-gray-400">
-                                  {rule.mode === 'FULL' ? '全ポイント' : `上限 ${rule.capPoints ?? 0}pt`} / {rule.active ? '有効' : '無効'}
-                                </p>
+                        <p className="text-xs text-gray-400">
+                          {rule.mode === 'FULL' ? '全ポイント' : `上限 ${rule.capPoints ?? 0}pt`}
+                        </p>
                               </div>
                               <div className="flex items-center gap-2">
-                                <button
-                                  onClick={() => handleToggleRule(rule.id, !rule.active)}
-                                  className="text-xs font-bold text-gray-500 hover:text-primary"
-                                >
-                                  {rule.active ? '無効化' : '有効化'}
-                                </button>
                                 <button
                                   onClick={() => handleDeleteRule(rule.id)}
                                   className="text-xs font-bold text-red-500 hover:underline"

@@ -101,7 +101,6 @@ export const AdminPointTransferApply = () => {
         .select('*')
         .eq('target_group_id', selectedTargetGroupId)
         .is('source_group_id', null)
-        .eq('active', true)
         .maybeSingle();
 
       if (error || !data) {
@@ -154,7 +153,7 @@ export const AdminPointTransferApply = () => {
           .where({ targetGroupId: selectedTargetGroupId, sourceGroupId: null })
           .first();
 
-        if (!mockRule || !mockRule.active) {
+        if (!mockRule) {
           setMessage('引き継ぎ条件が設定されていません');
           return;
         }
@@ -229,7 +228,6 @@ export const AdminPointTransferApply = () => {
         .select('*')
         .eq('target_group_id', selectedTargetGroupId)
         .is('source_group_id', null)
-        .eq('active', true)
         .maybeSingle();
 
       if (ruleError || !ruleData) {
