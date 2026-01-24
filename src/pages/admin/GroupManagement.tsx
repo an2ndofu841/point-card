@@ -40,7 +40,6 @@ export const GroupManagement = () => {
   }>>([]);
   const [isSavingRule, setIsSavingRule] = useState(false);
   const [ruleForm, setRuleForm] = useState({
-    sourceGroupId: 0,
     mode: 'FULL' as 'FULL' | 'CAP',
     capPoints: '',
     active: true
@@ -51,7 +50,8 @@ export const GroupManagement = () => {
       const localRules = targetGroupId
         ? await db.transferRules.where('targetGroupId').equals(targetGroupId).toArray()
         : await db.transferRules.toArray();
-      setTransferRules(localRules as any);
+      const filtered = localRules.filter(rule => rule.sourceGroupId === null || rule.sourceGroupId === undefined);
+      setTransferRules(filtered as any);
       return;
     }
 
@@ -61,7 +61,7 @@ export const GroupManagement = () => {
       .order('id', { ascending: false });
 
     const { data, error } = targetGroupId
-      ? await query.eq('target_group_id', targetGroupId)
+      ? await query.eq('target_group_id', targetGroupId).is('source_group_id', null)
       : await query;
 
     if (error) {
@@ -277,36 +277,50 @@ export const GroupManagement = () => {
   };
 
   const handleSaveRule = async () => {
-    if (!editingGroupId || !ruleForm.sourceGroupId) return;
-    if (editingGroupId === ruleForm.sourceGroupId) {
-      alert('引き継ぎ先と引き継ぎ元は別のグループを選択してください');
-      return;
-    }
+    if (!editingGroupId) return;
 
     setIsSavingRule(true);
     try {
       const payload = {
         target_group_id: editingGroupId,
-        source_group_id: ruleForm.sourceGroupId,
+        source_group_id: null,
         mode: ruleForm.mode,
         cap_points: ruleForm.mode === 'CAP' ? Number(ruleForm.capPoints || 0) : null,
         active: ruleForm.active
       };
 
       if (isMock) {
-        await db.transferRules.add({
-          targetGroupId: payload.target_group_id,
-          sourceGroupId: payload.source_group_id,
-          mode: payload.mode,
-          capPoints: payload.cap_points,
-          active: payload.active
-        });
+        const existing = await db.transferRules.where({ targetGroupId: editingGroupId, sourceGroupId: null }).first();
+        if (existing?.id) {
+          await db.transferRules.update(existing.id, {
+            mode: payload.mode,
+            capPoints: payload.cap_points,
+            active: payload.active
+          });
+        } else {
+          await db.transferRules.add({
+            targetGroupId: payload.target_group_id,
+            sourceGroupId: null,
+            mode: payload.mode,
+            capPoints: payload.cap_points,
+            active: payload.active
+          });
+        }
       } else {
-        const { error } = await supabase.from('transfer_rules').insert(payload);
+        const { data: existing } = await supabase
+          .from('transfer_rules')
+          .select('id')
+          .eq('target_group_id', editingGroupId)
+          .is('source_group_id', null)
+          .maybeSingle();
+
+        const { error } = existing?.id
+          ? await supabase.from('transfer_rules').update(payload).eq('id', existing.id)
+          : await supabase.from('transfer_rules').insert(payload);
         if (error) throw error;
       }
 
-      setRuleForm({ sourceGroupId: 0, mode: 'FULL', capPoints: '', active: true });
+      setRuleForm({ mode: 'FULL', capPoints: '', active: true });
       await loadTransferRules(editingGroupId);
     } catch (err) {
       console.error('Failed to save transfer rule', err);
@@ -363,7 +377,7 @@ export const GroupManagement = () => {
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
-    setRuleForm({ sourceGroupId: 0, mode: 'FULL', capPoints: '', active: true });
+    setRuleForm({ mode: 'FULL', capPoints: '', active: true });
     loadTransferRules(group.id!);
   };
 
@@ -512,18 +526,8 @@ export const GroupManagement = () => {
 
                 {formData.transferEnabled && (
                   <>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ元グループ</label>
-                      <select
-                        value={ruleForm.sourceGroupId}
-                        onChange={(e) => setRuleForm({ ...ruleForm, sourceGroupId: Number(e.target.value) })}
-                        className="w-full bg-white border border-gray-200 rounded-xl p-3 font-bold text-sm"
-                      >
-                        <option value={0}>選択してください</option>
-                        {groups?.map(group => (
-                          <option key={group.id} value={group.id}>{group.name}</option>
-                        ))}
-                      </select>
+                    <div className="text-xs text-gray-500 bg-white border border-gray-200 rounded-xl p-3">
+                      解散済みのどのグループからでもポイントを受け入れます。
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -575,11 +579,10 @@ export const GroupManagement = () => {
                       <div className="space-y-2">
                         <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">設定済み</h4>
                         {transferRules.map(rule => {
-                          const source = groups?.find(g => g.id === rule.sourceGroupId)?.name || `ID:${rule.sourceGroupId}`;
                           return (
                             <div key={rule.id} className="bg-white rounded-xl p-3 border border-gray-100 flex items-center justify-between">
                               <div>
-                                <p className="font-bold text-sm">{source}</p>
+                        <p className="font-bold text-sm">任意の解散グループ</p>
                                 <p className="text-xs text-gray-400">
                                   {rule.mode === 'FULL' ? '全ポイント' : `上限 ${rule.capPoints ?? 0}pt`} / {rule.active ? '有効' : '無効'}
                                 </p>

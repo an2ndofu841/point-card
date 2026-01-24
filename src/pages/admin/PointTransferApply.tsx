@@ -100,7 +100,7 @@ export const AdminPointTransferApply = () => {
         .from('transfer_rules')
         .select('*')
         .eq('target_group_id', selectedTargetGroupId)
-        .eq('source_group_id', codeData.source_group_id)
+        .is('source_group_id', null)
         .eq('active', true)
         .maybeSingle();
 
@@ -144,8 +144,14 @@ export const AdminPointTransferApply = () => {
           return;
         }
 
+        const sourceGroup = groups?.find(group => group.id === mockCode.sourceGroupId);
+        if (!sourceGroup?.deletedAt) {
+          setMessage('解散済みグループのみ引き継ぎできます');
+          return;
+        }
+
         const mockRule = await db.transferRules
-          .where({ targetGroupId: selectedTargetGroupId, sourceGroupId: mockCode.sourceGroupId })
+          .where({ targetGroupId: selectedTargetGroupId, sourceGroupId: null })
           .first();
 
         if (!mockRule || !mockRule.active) {
@@ -222,7 +228,7 @@ export const AdminPointTransferApply = () => {
         .from('transfer_rules')
         .select('*')
         .eq('target_group_id', selectedTargetGroupId)
-        .eq('source_group_id', codeData.source_group_id)
+        .is('source_group_id', null)
         .eq('active', true)
         .maybeSingle();
 
@@ -240,6 +246,17 @@ export const AdminPointTransferApply = () => {
 
       if (sourceError || !sourceMembership) {
         setMessage('引き継ぎ元のポイントが見つかりません');
+        return;
+      }
+
+      const { data: sourceGroup } = await supabase
+        .from('groups')
+        .select('deleted_at')
+        .eq('id', codeData.source_group_id)
+        .maybeSingle();
+
+      if (!sourceGroup?.deleted_at) {
+        setMessage('解散済みグループのみ引き継ぎできます');
         return;
       }
 
