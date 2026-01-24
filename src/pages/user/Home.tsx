@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type PointerEvent } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
@@ -14,6 +14,9 @@ export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
   const [qrValue, setQrValue] = useState('');
   const { userId } = useCurrentUser(); // Use real userId
+  const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
+  const [isTilting, setIsTilting] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
   
   // Fetch User Profile (with fallback to Supabase if local cache is missing)
   const userProfile = useLiveQuery(async () => {
@@ -164,6 +167,30 @@ export const UserHome = () => {
   const activeGroupDaysLeft = activeGroupDeletedAt
     ? Math.max(0, Math.ceil((activeGroupDeletedAt + GROUP_RETENTION_MS - Date.now()) / (24 * 60 * 60 * 1000)))
     : null;
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+  const handleCardPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    cardRef.current.setPointerCapture(event.pointerId);
+    setIsTilting(true);
+  };
+
+  const handleCardPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!isTilting || !cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const relX = (event.clientX - rect.left) / rect.width;
+    const relY = (event.clientY - rect.top) / rect.height;
+    const maxTilt = 14;
+    const tiltY = clamp((relX - 0.5) * maxTilt * 2, -maxTilt, maxTilt);
+    const tiltX = clamp(-(relY - 0.5) * maxTilt * 2, -maxTilt, maxTilt);
+    setCardTilt({ x: tiltX, y: tiltY });
+  };
+
+  const resetCardTilt = () => {
+    setIsTilting(false);
+    setCardTilt({ x: 0, y: 0 });
+  };
 
   const socialLinks = [
     { id: 'x', label: 'X', url: activeGroup?.xUrl, icon: Twitter },
@@ -691,7 +718,21 @@ export const UserHome = () => {
 
          {/* Point Card OR Empty State */}
          {activeGroup ? (
-             <div className={`relative w-full max-w-sm mx-auto aspect-[1.6/1] rounded-2xl shadow-xl shadow-gray-300/50 overflow-hidden p-6 flex flex-col justify-between isolate transition-all duration-500 ${activeGroupDeletedAt ? 'opacity-90' : ''}`}>
+             <div
+               ref={cardRef}
+               onPointerDown={handleCardPointerDown}
+               onPointerMove={handleCardPointerMove}
+               onPointerUp={resetCardTilt}
+               onPointerCancel={resetCardTilt}
+               onPointerLeave={resetCardTilt}
+               style={{
+                 transform: `perspective(900px) rotateX(${cardTilt.x}deg) rotateY(${cardTilt.y}deg)`,
+                 transition: isTilting ? 'transform 0s' : 'transform 0.6s ease',
+                 willChange: 'transform',
+                 touchAction: 'pan-y'
+               }}
+               className={`relative w-full max-w-sm mx-auto aspect-[1.6/1] rounded-2xl shadow-xl shadow-gray-300/50 overflow-hidden p-6 flex flex-col justify-between isolate transition-all duration-500 ${activeGroupDeletedAt ? 'opacity-90' : ''}`}
+             >
                 {activeGroupDeletedAt && (
                   <div className="absolute top-4 left-4 bg-white/90 text-gray-600 text-[10px] font-bold px-2 py-1 rounded-full shadow">
                     削除済み（残り{activeGroupDaysLeft}日）
