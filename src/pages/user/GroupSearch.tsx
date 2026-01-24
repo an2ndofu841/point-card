@@ -41,6 +41,7 @@ export const GroupSearch = () => {
         name: g.name,
         themeColor: g.theme_color,
         logoUrl: g.logo_url,
+        transferEnabled: g.transfer_enabled ?? false,
         deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
       })) || [];
       
@@ -70,6 +71,7 @@ export const GroupSearch = () => {
         name: g.name,
         themeColor: g.theme_color,
         logoUrl: g.logo_url,
+        transferEnabled: g.transfer_enabled ?? false,
         deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
       })) || [];
 
@@ -220,10 +222,16 @@ export const GroupSearch = () => {
                    >
                       {group.logoUrl ? <img src={group.logoUrl} alt="" className="w-full h-full object-cover rounded-full" /> : group.name[0]}
                    </div>
-                   <div>
-                     <h3 className="font-bold text-text-main">{group.name}</h3>
-                     <p className="text-xs text-gray-400">ID: {group.id}</p>
-                   </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-text-main">{group.name}</h3>
+                      {group.transferEnabled && (
+                        <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full">
+                          引き継ぎ可
+                        </span>
+                      )}
+                    </div>
+                  </div>
                  </div>
                  <span 
                    className="bg-gray-50 text-primary p-2.5 rounded-full hover:bg-primary hover:text-white transition"
