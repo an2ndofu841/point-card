@@ -5,6 +5,7 @@ import { useCurrentUser } from '../../hooks/useCurrentUser';
 import { ArrowLeft, Check, Lock, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase, isMock } from '../../lib/supabase';
+import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 
 export const UserDesigns = () => {
   const { userId } = useCurrentUser();
@@ -19,6 +20,19 @@ export const UserDesigns = () => {
   , [userId]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<number | undefined>(stateGroupId);
+
+  // Initialize selected group from saved selection (Home)
+  useEffect(() => {
+      if (!userId) return;
+      if (stateGroupId) {
+          setSelectedGroupId(stateGroupId);
+          return;
+      }
+      const saved = loadSelectedGroupId(userId);
+      if (saved) {
+          setSelectedGroupId(saved);
+      }
+  }, [userId, stateGroupId]);
 
   // Sync user designs from Supabase on mount (or when group changes)
   useEffect(() => {
@@ -76,16 +90,21 @@ export const UserDesigns = () => {
       syncUserDesigns();
   }, [userId, selectedGroupId]);
 
-  // If only one group, auto-select it if no state provided
+  // If no group selected yet, pick first membership
   useEffect(() => {
-      if (!stateGroupId && memberships && memberships.length > 0) {
-          if (!selectedGroupId) {
-              setSelectedGroupId(memberships[0].groupId);
-          }
+      if (memberships && memberships.length > 0 && !selectedGroupId) {
+          const nextGroupId = memberships[0].groupId;
+          setSelectedGroupId(nextGroupId);
+          if (userId) saveSelectedGroupId(userId, nextGroupId);
       }
   }, [stateGroupId, memberships, selectedGroupId]);
 
   const groupId = selectedGroupId;
+
+  const handleChangeGroup = (groupId: number) => {
+      setSelectedGroupId(groupId);
+      if (userId) saveSelectedGroupId(userId, groupId);
+  };
 
   // Fetch Group Info for Display
   const group = useLiveQuery(() => groupId ? db.groups.get(groupId) : undefined, [groupId]);
@@ -174,7 +193,12 @@ export const UserDesigns = () => {
               <p className="text-sm text-gray-500 mb-4">デザイン変更するグループを選んでください</p>
               <div className="space-y-4">
                   {memberships?.map(m => (
-                      <GroupSelectorItem key={m.groupId} groupId={m.groupId} onSelect={() => setSelectedGroupId(m.groupId)} />
+                      <GroupSelectorItem 
+                          key={m.groupId} 
+                          groupId={m.groupId} 
+                          onSelect={() => handleChangeGroup(m.groupId)} 
+                          variant="list"
+                      />
                   ))}
               </div>
           </div>
@@ -195,6 +219,20 @@ export const UserDesigns = () => {
             <h1 className="text-xl font-bold">券面デザイン変更</h1>
             {group && <p className="text-xs text-gray-400 font-bold">{group.name}</p>}
         </div>
+      </div>
+
+      <div className="max-w-md mx-auto mb-6">
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">グループ切り替え</h2>
+          <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+              {memberships?.map(m => (
+                  <GroupSelectorItem 
+                      key={m.groupId} 
+                      groupId={m.groupId} 
+                      onSelect={() => handleChangeGroup(m.groupId)} 
+                      isSelected={m.groupId === groupId}
+                  />
+              ))}
+          </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
@@ -256,15 +294,40 @@ export const UserDesigns = () => {
 };
 
 // Helper Component to fetch Group Name
-const GroupSelectorItem = ({ groupId, onSelect }: { groupId: number, onSelect: () => void }) => {
+const GroupSelectorItem = ({ 
+    groupId, 
+    onSelect, 
+    isSelected, 
+    variant = 'chip' 
+}: { 
+    groupId: number; 
+    onSelect: () => void; 
+    isSelected?: boolean; 
+    variant?: 'chip' | 'list';
+}) => {
     const group = useLiveQuery(() => db.groups.get(groupId), [groupId]);
+    if (variant === 'list') {
+        return (
+            <button 
+                onClick={onSelect}
+                className="w-full p-4 bg-white rounded-xl shadow-sm border border-gray-100 font-bold text-left hover:bg-gray-50 flex justify-between items-center"
+            >
+                <span>{group ? group.name : `Group ID: ${groupId}`}</span>
+                <ArrowLeft size={16} className="rotate-180 text-gray-300" />
+            </button>
+        );
+    }
     return (
         <button 
             onClick={onSelect}
-            className="w-full p-4 bg-white rounded-xl shadow-sm border border-gray-100 font-bold text-left hover:bg-gray-50 flex justify-between items-center"
+            className={`px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap flex items-center gap-2
+                ${isSelected 
+                    ? 'bg-gray-900 text-white shadow-md' 
+                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
         >
             <span>{group ? group.name : `Group ID: ${groupId}`}</span>
-            <ArrowLeft size={16} className="rotate-180 text-gray-300" />
+            {isSelected && <Check size={14} className="opacity-80" />}
         </button>
     );
 };
