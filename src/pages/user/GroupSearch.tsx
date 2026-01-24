@@ -208,7 +208,11 @@ export const GroupSearch = () => {
              )}
 
              {(searchQuery ? searchResults : defaultGroups).map(group => (
-               <div key={group.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+               <Link
+                 key={group.id}
+                 to={`/join/${group.id}`}
+                 className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:bg-gray-50 transition"
+               >
                  <div className="flex items-center gap-4">
                    <div 
                      className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-sm"
@@ -221,13 +225,13 @@ export const GroupSearch = () => {
                      <p className="text-xs text-gray-400">ID: {group.id}</p>
                    </div>
                  </div>
-                 <Link 
-                   to={`/join/${group.id}`}
+                 <span 
                    className="bg-gray-50 text-primary p-2.5 rounded-full hover:bg-primary hover:text-white transition"
+                   aria-hidden="true"
                  >
                    <ArrowRight size={20} />
-                 </Link>
-               </div>
+                 </span>
+               </Link>
              ))}
           </div>
         </div>
