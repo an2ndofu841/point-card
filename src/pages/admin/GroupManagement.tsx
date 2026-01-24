@@ -27,7 +27,8 @@ export const GroupManagement = () => {
     websiteUrl: '',
     transferEnabled: false,
     profileCoverUrl: '',
-    profileDescription: ''
+    profileDescription: '',
+    profileIsSolo: false
   });
 
   const [showQR, setShowQR] = useState<number | null>(null); // ID of group to show QR for
@@ -329,7 +330,8 @@ export const GroupManagement = () => {
                 websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl),
                 transferEnabled: !!formData.transferEnabled,
                 profileCoverUrl: formData.profileCoverUrl,
-                profileDescription: formData.profileDescription
+                profileDescription: formData.profileDescription,
+                profileIsSolo: !!formData.profileIsSolo
             });
           } else {
             // Local Create Mock
@@ -347,6 +349,7 @@ export const GroupManagement = () => {
                 transferEnabled: !!formData.transferEnabled,
                 profileCoverUrl: formData.profileCoverUrl,
                 profileDescription: formData.profileDescription,
+                profileIsSolo: !!formData.profileIsSolo,
                 deletedAt: null
             } as any);
           }
@@ -368,7 +371,8 @@ export const GroupManagement = () => {
                     website_url: resolveUrlForSupabase(formData.websiteUrl, currentGroup?.websiteUrl),
                     transfer_enabled: !!formData.transferEnabled,
                     profile_cover_url: formData.profileCoverUrl || null,
-                    profile_description: formData.profileDescription || null
+                    profile_description: formData.profileDescription || null,
+                    profile_is_solo: !!formData.profileIsSolo
                 })
                 .eq('id', editingGroupId);
             
@@ -386,7 +390,10 @@ export const GroupManagement = () => {
                 itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
                 spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
                 websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl),
-                transferEnabled: !!formData.transferEnabled
+                transferEnabled: !!formData.transferEnabled,
+                profileCoverUrl: formData.profileCoverUrl,
+                profileDescription: formData.profileDescription,
+                profileIsSolo: !!formData.profileIsSolo
             });
           } else {
             // 1. Save to Supabase first to get ID
@@ -405,7 +412,8 @@ export const GroupManagement = () => {
                     website_url: normalizeUrl(formData.websiteUrl) ?? null,
                     transfer_enabled: !!formData.transferEnabled,
                     profile_cover_url: formData.profileCoverUrl || null,
-                    profile_description: formData.profileDescription || null
+                    profile_description: formData.profileDescription || null,
+                    profile_is_solo: !!formData.profileIsSolo
                 })
                 .select()
                 .single();
@@ -429,6 +437,7 @@ export const GroupManagement = () => {
                 transferEnabled: data.transfer_enabled ?? false,
                 profileCoverUrl: data.profile_cover_url,
                 profileDescription: data.profile_description,
+                profileIsSolo: data.profile_is_solo ?? false,
               deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
             });
           }
@@ -451,7 +460,8 @@ export const GroupManagement = () => {
         websiteUrl: '',
         transferEnabled: false,
         profileCoverUrl: '',
-        profileDescription: ''
+        profileDescription: '',
+        profileIsSolo: false
       });
     } catch (err) {
       console.error("Failed to save group", err);
@@ -545,7 +555,8 @@ export const GroupManagement = () => {
         websiteUrl: group.websiteUrl,
         transferEnabled: group.transferEnabled ?? false,
         profileCoverUrl: group.profileCoverUrl,
-        profileDescription: group.profileDescription
+        profileDescription: group.profileDescription,
+        profileIsSolo: group.profileIsSolo ?? false
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
@@ -615,7 +626,8 @@ export const GroupManagement = () => {
                   websiteUrl: '',
                   transferEnabled: false,
                   profileCoverUrl: '',
-                  profileDescription: ''
+                  profileDescription: '',
+                  profileIsSolo: false
                 });
                 setIsEditing(true);
             }} 
@@ -719,6 +731,20 @@ export const GroupManagement = () => {
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3">
+                  <div>
+                    <p className="text-sm font-bold text-gray-600">ソロ設定</p>
+                    <p className="text-xs text-gray-400">所属メンバーを表示しません</p>
+                  </div>
+                  <button
+                    onClick={() => setFormData({ ...formData, profileIsSolo: !formData.profileIsSolo })}
+                    className="flex items-center gap-2 text-sm font-bold text-gray-600"
+                  >
+                    {formData.profileIsSolo ? <ToggleRight size={20} className="text-primary" /> : <ToggleLeft size={20} className="text-gray-300" />}
+                    {formData.profileIsSolo ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-400 mb-1">グループ説明</label>
                   <textarea
@@ -734,9 +760,14 @@ export const GroupManagement = () => {
 
             <div className="pt-2">
               <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-2">所属メンバー紹介</label>
-              <div className="space-y-3">
-                {memberEdits.map((member, index) => (
-                  <div key={`${member.id ?? 'new'}-${index}`} className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+              {formData.profileIsSolo ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-500">
+                  ソロ設定のため非表示になります。
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {memberEdits.map((member, index) => (
+                    <div key={`${member.id ?? 'new'}-${index}`} className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-white border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
                         {member.imageUrl ? (
@@ -799,24 +830,25 @@ export const GroupManagement = () => {
                       />
                     </div>
                   </div>
-                ))}
+                  ))}
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleAddMember}
-                    className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-bold hover:bg-gray-50 transition"
-                  >
-                    メンバーを追加
-                  </button>
-                  <button
-                    onClick={handleSaveMembers}
-                    disabled={isSavingMembers}
-                    className="flex-1 bg-primary text-white py-2 rounded-xl text-sm font-bold hover:bg-primary-dark transition disabled:opacity-50"
-                  >
-                    {isSavingMembers ? '保存中...' : 'メンバー保存'}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleAddMember}
+                      className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-bold hover:bg-gray-50 transition"
+                    >
+                      メンバーを追加
+                    </button>
+                    <button
+                      onClick={handleSaveMembers}
+                      disabled={isSavingMembers}
+                      className="flex-1 bg-primary text-white py-2 rounded-xl text-sm font-bold hover:bg-primary-dark transition disabled:opacity-50"
+                    >
+                      {isSavingMembers ? '保存中...' : 'メンバー保存'}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="pt-2">
@@ -986,7 +1018,8 @@ export const GroupManagement = () => {
                     websiteUrl: '',
                     transferEnabled: false,
                     profileCoverUrl: '',
-                    profileDescription: ''
+                  profileDescription: '',
+                  profileIsSolo: false
                   });
               }}
               className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"

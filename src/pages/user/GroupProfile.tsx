@@ -35,6 +35,7 @@ export const GroupProfile = () => {
             transferEnabled: data.transfer_enabled ?? false,
             profileCoverUrl: data.profile_cover_url,
             profileDescription: data.profile_description,
+            profileIsSolo: data.profile_is_solo ?? false,
             deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
           });
         }
@@ -149,30 +150,32 @@ export const GroupProfile = () => {
           </div>
         )}
 
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">所属メンバー</h2>
-          {members && members.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3">
-              {members.map(member => (
-                <div key={member.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
-                  <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden flex items-center justify-center">
-                    {member.imageUrl ? (
-                      <img src={member.imageUrl} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <Users size={18} className="text-gray-300" />
-                    )}
+        {!group?.profileIsSolo && (
+          <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">所属メンバー</h2>
+            {members && members.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3">
+                {members.map(member => (
+                  <div key={member.id} className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                    <div className="w-12 h-12 rounded-lg bg-white border border-gray-200 overflow-hidden flex items-center justify-center">
+                      {member.imageUrl ? (
+                        <img src={member.imageUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Users size={18} className="text-gray-300" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">{member.name}</p>
+                      {member.role && <p className="text-xs text-gray-400">{member.role}</p>}
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-sm">{member.name}</p>
-                    {member.role && <p className="text-xs text-gray-400">{member.role}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">メンバー情報は準備中です</p>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">メンバー情報は準備中です</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

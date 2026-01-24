@@ -15,6 +15,7 @@ export interface IdolGroup {
   transferEnabled?: boolean;
   profileCoverUrl?: string;
   profileDescription?: string;
+  profileIsSolo?: boolean;
   deletedAt?: number | null;
 }
 

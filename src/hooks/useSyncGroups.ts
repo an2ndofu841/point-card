@@ -45,6 +45,7 @@ export const useSyncGroups = () => {
                 transferEnabled: g.transfer_enabled ?? g.transferEnabled ?? false,
                 profileCoverUrl: g.profile_cover_url || g.profileCoverUrl,
                 profileDescription: g.profile_description || g.profileDescription,
+                profileIsSolo: g.profile_is_solo ?? g.profileIsSolo ?? false,
                 deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
             })));
         }
