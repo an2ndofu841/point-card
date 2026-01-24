@@ -102,7 +102,7 @@ export interface UserDesign {
 export interface TransferRule {
   id?: number;
   targetGroupId: number;
-  sourceGroupId: number;
+  sourceGroupId: number | null;
   mode: 'FULL' | 'CAP';
   capPoints?: number | null;
   active: boolean;

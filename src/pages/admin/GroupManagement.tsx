@@ -33,7 +33,7 @@ export const GroupManagement = () => {
   const [transferRules, setTransferRules] = useState<Array<{
     id: number;
     targetGroupId: number;
-    sourceGroupId: number;
+    sourceGroupId: number | null;
     mode: 'FULL' | 'CAP';
     capPoints?: number | null;
     active: boolean;
