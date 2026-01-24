@@ -12,6 +12,7 @@ export interface IdolGroup {
   itunesUrl?: string;
   spotifyUrl?: string;
   websiteUrl?: string;
+  transferEnabled?: boolean;
   deletedAt?: number | null;
 }
 

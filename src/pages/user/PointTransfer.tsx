@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Copy, QrCode, Users, RefreshCw, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Copy, QrCode, Users, RefreshCw } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
@@ -180,16 +180,10 @@ export const UserPointTransfer = () => {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => copyToClipboard(transferUrl)}
-                      className="flex-1 bg-white border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-50 transition"
+                      className="w-full bg-white border border-gray-200 text-gray-500 py-2.5 rounded-xl text-sm font-bold hover:bg-gray-50 transition"
                     >
                       URLをコピー
                     </button>
-                    <Link
-                      to={`/user/transfer/apply?code=${currentCode}`}
-                      className="flex-1 bg-primary text-white py-2.5 rounded-xl text-sm font-bold text-center hover:bg-primary-dark transition"
-                    >
-                      引き継ぎへ進む
-                    </Link>
                   </div>
                 </div>
               ) : (
@@ -205,15 +199,9 @@ export const UserPointTransfer = () => {
           </>
         )}
 
-        <Link to="/user/transfer/apply" className="block bg-white rounded-2xl border border-gray-100 p-4 hover:bg-gray-50 transition">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <QrCode size={18} className="text-primary" />
-              <span className="font-bold text-sm">引き継ぎコードを入力</span>
-            </div>
-            <ArrowRight size={18} className="text-gray-300" />
-          </div>
-        </Link>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-900">
+          引き継ぎは物販ブースでスタッフが行います。発行したQRコードをスタッフに提示してください。
+        </div>
       </div>
     </div>
   );

@@ -42,6 +42,7 @@ export const useSyncGroups = () => {
                 itunesUrl: g.itunes_url || g.itunesUrl,
                 spotifyUrl: g.spotify_url || g.spotifyUrl,
                 websiteUrl: g.website_url || g.websiteUrl,
+                transferEnabled: g.transfer_enabled ?? g.transferEnabled ?? false,
                 deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
             })));
         }

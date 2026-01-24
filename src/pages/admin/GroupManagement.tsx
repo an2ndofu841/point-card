@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type IdolGroup } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
-import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera, Edit, Repeat, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera, Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 
 export const GroupManagement = () => {
@@ -24,7 +24,8 @@ export const GroupManagement = () => {
     youtubeUrl: '',
     itunesUrl: '',
     spotifyUrl: '',
-    websiteUrl: ''
+    websiteUrl: '',
+    transferEnabled: false
   });
 
   const [showQR, setShowQR] = useState<number | null>(null); // ID of group to show QR for
@@ -39,24 +40,29 @@ export const GroupManagement = () => {
   }>>([]);
   const [isSavingRule, setIsSavingRule] = useState(false);
   const [ruleForm, setRuleForm] = useState({
-    targetGroupId: 0,
     sourceGroupId: 0,
     mode: 'FULL' as 'FULL' | 'CAP',
     capPoints: '',
     active: true
   });
 
-  const loadTransferRules = async () => {
+  const loadTransferRules = async (targetGroupId?: number | null) => {
     if (isMock) {
-      const localRules = await db.transferRules.toArray();
+      const localRules = targetGroupId
+        ? await db.transferRules.where('targetGroupId').equals(targetGroupId).toArray()
+        : await db.transferRules.toArray();
       setTransferRules(localRules as any);
       return;
     }
 
-    const { data, error } = await supabase
+    const query = supabase
       .from('transfer_rules')
       .select('*')
       .order('id', { ascending: false });
+
+    const { data, error } = targetGroupId
+      ? await query.eq('target_group_id', targetGroupId)
+      : await query;
 
     if (error) {
       console.error('Failed to load transfer rules', error);
@@ -77,7 +83,7 @@ export const GroupManagement = () => {
   };
 
   useEffect(() => {
-    loadTransferRules();
+    loadTransferRules(editingGroupId);
   }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,7 +155,8 @@ export const GroupManagement = () => {
                 youtubeUrl: resolveUrlForDb(formData.youtubeUrl, currentGroup?.youtubeUrl),
                 itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
                 spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl)
+                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl),
+                transferEnabled: !!formData.transferEnabled
             });
           } else {
             // Local Create Mock
@@ -164,6 +171,7 @@ export const GroupManagement = () => {
                 itunesUrl: normalizeUrl(formData.itunesUrl),
                 spotifyUrl: normalizeUrl(formData.spotifyUrl),
                 websiteUrl: normalizeUrl(formData.websiteUrl),
+                transferEnabled: !!formData.transferEnabled,
                 deletedAt: null
             } as any);
           }
@@ -182,7 +190,8 @@ export const GroupManagement = () => {
                     youtube_url: resolveUrlForSupabase(formData.youtubeUrl, currentGroup?.youtubeUrl),
                     itunes_url: resolveUrlForSupabase(formData.itunesUrl, currentGroup?.itunesUrl),
                     spotify_url: resolveUrlForSupabase(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                    website_url: resolveUrlForSupabase(formData.websiteUrl, currentGroup?.websiteUrl)
+                    website_url: resolveUrlForSupabase(formData.websiteUrl, currentGroup?.websiteUrl),
+                    transfer_enabled: !!formData.transferEnabled
                 })
                 .eq('id', editingGroupId);
             
@@ -199,7 +208,8 @@ export const GroupManagement = () => {
                 youtubeUrl: resolveUrlForDb(formData.youtubeUrl, currentGroup?.youtubeUrl),
                 itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
                 spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
-                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl)
+                websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl),
+                transferEnabled: !!formData.transferEnabled
             });
           } else {
             // 1. Save to Supabase first to get ID
@@ -215,7 +225,8 @@ export const GroupManagement = () => {
                     youtube_url: normalizeUrl(formData.youtubeUrl) ?? null,
                     itunes_url: normalizeUrl(formData.itunesUrl) ?? null,
                     spotify_url: normalizeUrl(formData.spotifyUrl) ?? null,
-                    website_url: normalizeUrl(formData.websiteUrl) ?? null
+                    website_url: normalizeUrl(formData.websiteUrl) ?? null,
+                    transfer_enabled: !!formData.transferEnabled
                 })
                 .select()
                 .single();
@@ -236,6 +247,7 @@ export const GroupManagement = () => {
                 itunesUrl: data.itunes_url,
                 spotifyUrl: data.spotify_url,
                 websiteUrl: data.website_url,
+                transferEnabled: data.transfer_enabled ?? false,
               deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
             });
           }
@@ -253,7 +265,8 @@ export const GroupManagement = () => {
         youtubeUrl: '',
         itunesUrl: '',
         spotifyUrl: '',
-        websiteUrl: ''
+        websiteUrl: '',
+        transferEnabled: false
       });
     } catch (err) {
       console.error("Failed to save group", err);
@@ -264,8 +277,8 @@ export const GroupManagement = () => {
   };
 
   const handleSaveRule = async () => {
-    if (!ruleForm.targetGroupId || !ruleForm.sourceGroupId) return;
-    if (ruleForm.targetGroupId === ruleForm.sourceGroupId) {
+    if (!editingGroupId || !ruleForm.sourceGroupId) return;
+    if (editingGroupId === ruleForm.sourceGroupId) {
       alert('引き継ぎ先と引き継ぎ元は別のグループを選択してください');
       return;
     }
@@ -273,7 +286,7 @@ export const GroupManagement = () => {
     setIsSavingRule(true);
     try {
       const payload = {
-        target_group_id: ruleForm.targetGroupId,
+        target_group_id: editingGroupId,
         source_group_id: ruleForm.sourceGroupId,
         mode: ruleForm.mode,
         cap_points: ruleForm.mode === 'CAP' ? Number(ruleForm.capPoints || 0) : null,
@@ -293,8 +306,8 @@ export const GroupManagement = () => {
         if (error) throw error;
       }
 
-      setRuleForm({ targetGroupId: 0, sourceGroupId: 0, mode: 'FULL', capPoints: '', active: true });
-      await loadTransferRules();
+      setRuleForm({ sourceGroupId: 0, mode: 'FULL', capPoints: '', active: true });
+      await loadTransferRules(editingGroupId);
     } catch (err) {
       console.error('Failed to save transfer rule', err);
       alert('引き継ぎ設定の保存に失敗しました');
@@ -345,10 +358,13 @@ export const GroupManagement = () => {
         youtubeUrl: group.youtubeUrl,
         itunesUrl: group.itunesUrl,
         spotifyUrl: group.spotifyUrl,
-        websiteUrl: group.websiteUrl
+        websiteUrl: group.websiteUrl,
+        transferEnabled: group.transferEnabled ?? false
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
+    setRuleForm({ sourceGroupId: 0, mode: 'FULL', capPoints: '', active: true });
+    loadTransferRules(group.id!);
   };
 
 
@@ -407,7 +423,8 @@ export const GroupManagement = () => {
                   youtubeUrl: '',
                   itunesUrl: '',
                   spotifyUrl: '',
-                  websiteUrl: ''
+                  websiteUrl: '',
+                  transferEnabled: false
                 });
                 setIsEditing(true);
             }} 
@@ -476,6 +493,125 @@ export const GroupManagement = () => {
                     disabled={isUploading}
                   />
                 </label>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-2">ポイント引き継ぎ</label>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-600">引き継ぎを有効化</span>
+                  <button
+                    onClick={() => setFormData({ ...formData, transferEnabled: !formData.transferEnabled })}
+                    className="flex items-center gap-2 text-sm font-bold text-gray-600"
+                  >
+                    {formData.transferEnabled ? <ToggleRight size={20} className="text-primary" /> : <ToggleLeft size={20} className="text-gray-300" />}
+                    {formData.transferEnabled ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                {formData.transferEnabled && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ元グループ</label>
+                      <select
+                        value={ruleForm.sourceGroupId}
+                        onChange={(e) => setRuleForm({ ...ruleForm, sourceGroupId: Number(e.target.value) })}
+                        className="w-full bg-white border border-gray-200 rounded-xl p-3 font-bold text-sm"
+                      >
+                        <option value={0}>選択してください</option>
+                        {groups?.map(group => (
+                          <option key={group.id} value={group.id}>{group.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ方式</label>
+                        <select
+                          value={ruleForm.mode}
+                          onChange={(e) => setRuleForm({ ...ruleForm, mode: e.target.value as 'FULL' | 'CAP' })}
+                          className="w-full bg-white border border-gray-200 rounded-xl p-3 font-bold text-sm"
+                        >
+                          <option value="FULL">全ポイント</option>
+                          <option value="CAP">上限あり</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 mb-1">上限ポイント</label>
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={ruleForm.mode !== 'CAP'}
+                          value={ruleForm.capPoints}
+                          onChange={(e) => setRuleForm({ ...ruleForm, capPoints: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-xl p-3 font-bold text-sm disabled:opacity-50"
+                          placeholder="例: 10000"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-400">有効</span>
+                      <button
+                        onClick={() => setRuleForm({ ...ruleForm, active: !ruleForm.active })}
+                        className="flex items-center gap-2 text-sm font-bold text-gray-600"
+                      >
+                        {ruleForm.active ? <ToggleRight size={20} className="text-primary" /> : <ToggleLeft size={20} className="text-gray-300" />}
+                        {ruleForm.active ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={handleSaveRule}
+                      disabled={isSavingRule}
+                      className="w-full bg-primary text-white py-2.5 rounded-xl font-bold hover:bg-primary-dark transition disabled:opacity-50"
+                    >
+                      {isSavingRule ? '保存中...' : '引き継ぎ条件を追加'}
+                    </button>
+
+                    {transferRules.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">設定済み</h4>
+                        {transferRules.map(rule => {
+                          const source = groups?.find(g => g.id === rule.sourceGroupId)?.name || `ID:${rule.sourceGroupId}`;
+                          return (
+                            <div key={rule.id} className="bg-white rounded-xl p-3 border border-gray-100 flex items-center justify-between">
+                              <div>
+                                <p className="font-bold text-sm">{source}</p>
+                                <p className="text-xs text-gray-400">
+                                  {rule.mode === 'FULL' ? '全ポイント' : `上限 ${rule.capPoints ?? 0}pt`} / {rule.active ? '有効' : '無効'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleToggleRule(rule.id, !rule.active)}
+                                  className="text-xs font-bold text-gray-500 hover:text-primary"
+                                >
+                                  {rule.active ? '無効化' : '有効化'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteRule(rule.id)}
+                                  className="text-xs font-bold text-red-500 hover:underline"
+                                >
+                                  削除
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <Link
+                      to={`/admin/transfer?targetGroupId=${editingGroupId}`}
+                      className="w-full bg-white border border-gray-200 text-primary font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-blue-50 transition"
+                    >
+                      <QrCode size={16} /> 引き継ぎコードを読み取る
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
 
@@ -550,7 +686,8 @@ export const GroupManagement = () => {
                     youtubeUrl: '',
                     itunesUrl: '',
                     spotifyUrl: '',
-                    websiteUrl: ''
+                    websiteUrl: '',
+                    transferEnabled: false
                   });
               }}
               className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"
@@ -672,123 +809,6 @@ export const GroupManagement = () => {
             </div>
           )})}
 
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Repeat size={18} className="text-primary" />
-              <h3 className="font-bold text-lg">ポイント引き継ぎ設定</h3>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ先グループ</label>
-                <select
-                  value={ruleForm.targetGroupId}
-                  onChange={(e) => setRuleForm({ ...ruleForm, targetGroupId: Number(e.target.value) })}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm"
-                >
-                  <option value={0}>選択してください</option>
-                  {groups?.map(group => (
-                    <option key={group.id} value={group.id}>{group.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ元グループ</label>
-                <select
-                  value={ruleForm.sourceGroupId}
-                  onChange={(e) => setRuleForm({ ...ruleForm, sourceGroupId: Number(e.target.value) })}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm"
-                >
-                  <option value={0}>選択してください</option>
-                  {groups?.map(group => (
-                    <option key={group.id} value={group.id}>{group.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1">引き継ぎ方式</label>
-                  <select
-                    value={ruleForm.mode}
-                    onChange={(e) => setRuleForm({ ...ruleForm, mode: e.target.value as 'FULL' | 'CAP' })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm"
-                  >
-                    <option value="FULL">全ポイント</option>
-                    <option value="CAP">上限あり</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-400 mb-1">上限ポイント</label>
-                  <input
-                    type="number"
-                    min={0}
-                    disabled={ruleForm.mode !== 'CAP'}
-                    value={ruleForm.capPoints}
-                    onChange={(e) => setRuleForm({ ...ruleForm, capPoints: e.target.value })}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm disabled:opacity-50"
-                    placeholder="例: 10000"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-400">有効</span>
-                <button
-                  onClick={() => setRuleForm({ ...ruleForm, active: !ruleForm.active })}
-                  className="flex items-center gap-2 text-sm font-bold text-gray-600"
-                >
-                  {ruleForm.active ? <ToggleRight size={20} className="text-primary" /> : <ToggleLeft size={20} className="text-gray-300" />}
-                  {ruleForm.active ? 'ON' : 'OFF'}
-                </button>
-              </div>
-
-              <button
-                onClick={handleSaveRule}
-                disabled={isSavingRule}
-                className="w-full bg-primary text-white py-2.5 rounded-xl font-bold hover:bg-primary-dark transition disabled:opacity-50"
-              >
-                {isSavingRule ? '保存中...' : '引き継ぎ設定を追加'}
-              </button>
-            </div>
-
-            {transferRules.length > 0 && (
-              <div className="mt-6 space-y-3">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">設定済み</h4>
-                {transferRules.map(rule => {
-                  const target = groups?.find(g => g.id === rule.targetGroupId)?.name || `ID:${rule.targetGroupId}`;
-                  const source = groups?.find(g => g.id === rule.sourceGroupId)?.name || `ID:${rule.sourceGroupId}`;
-                  return (
-                    <div key={rule.id} className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-bold text-sm">{source} → {target}</p>
-                          <p className="text-xs text-gray-400">
-                            {rule.mode === 'FULL' ? '全ポイント' : `上限 ${rule.capPoints ?? 0}pt`} / {rule.active ? '有効' : '無効'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleToggleRule(rule.id, !rule.active)}
-                            className="text-xs font-bold text-gray-500 hover:text-primary"
-                          >
-                            {rule.active ? '無効化' : '有効化'}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteRule(rule.id)}
-                            className="text-xs font-bold text-red-500 hover:underline"
-                          >
-                            削除
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

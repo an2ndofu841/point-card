@@ -17,7 +17,7 @@ import { UserTrophies } from './pages/user/Trophies';
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { UserGroupManagement } from './pages/user/GroupManagement'; // Import UserGroupManagement
 import { UserPointTransfer } from './pages/user/PointTransfer';
-import { UserPointTransferApply } from './pages/user/PointTransferApply';
+import { AdminPointTransferApply } from './pages/admin/PointTransferApply';
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
 import { AdminDashboard } from './pages/admin/Dashboard';
@@ -100,7 +100,6 @@ function App() {
         <Route path="/user/groups/search" element={<ProtectedUserRoute><GroupSearch /></ProtectedUserRoute>} /> {/* New Route */}
         <Route path="/user/groups/manage" element={<ProtectedUserRoute><UserGroupManagement /></ProtectedUserRoute>} /> {/* Group Management */}
         <Route path="/user/transfer" element={<ProtectedUserRoute><UserPointTransfer /></ProtectedUserRoute>} />
-        <Route path="/user/transfer/apply" element={<ProtectedUserRoute><UserPointTransferApply /></ProtectedUserRoute>} />
         <Route path="/user/profile" element={<ProtectedUserRoute><ProfileEdit /></ProtectedUserRoute>} />
         
         {/* Admin Routes */}
@@ -115,6 +114,7 @@ function App() {
         <Route path="/admin/live-announcements" element={<ProtectedAdminRoute><ManageLiveAnnouncements /></ProtectedAdminRoute>} />
         <Route path="/admin/live-attendance" element={<ProtectedAdminRoute><LiveAttendanceCounts /></ProtectedAdminRoute>} />
         <Route path="/admin/groups" element={<ProtectedAdminRoute><GroupManagement /></ProtectedAdminRoute>} />
+        <Route path="/admin/transfer" element={<ProtectedAdminRoute><AdminPointTransferApply /></ProtectedAdminRoute>} />
         <Route path="/admin/live-schedule" element={<ProtectedAdminRoute><AdminLiveSchedule /></ProtectedAdminRoute>} />
         <Route path="/admin/members" element={<ProtectedAdminRoute><ManageMembers /></ProtectedAdminRoute>} />
       </Routes>
