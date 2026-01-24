@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Users, Trash2, AlertTriangle } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
@@ -8,7 +8,6 @@ import { supabase, isMock } from '../../lib/supabase';
 import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGroup';
 
 export const UserGroupManagement = () => {
-  const navigate = useNavigate();
   const { userId } = useCurrentUser();
   const [deletingGroupId, setDeletingGroupId] = useState<number | null>(null);
   
