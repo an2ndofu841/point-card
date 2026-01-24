@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal, Bell, Pin } from 'lucide-react';
+import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal, Bell, Pin, X } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -157,6 +157,57 @@ export const UserHome = () => {
   const handleSelectGroup = (groupId: number) => {
     setActiveGroupId(groupId);
     if (userId) saveSelectedGroupId(userId, groupId);
+  };
+
+  const handleRemoveGroup = async (groupId: number, groupName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    const confirmed = window.confirm(
+      `「${groupName}」を削除してもよろしいですか？\n\n⚠️ 注意：このグループで貯めたポイントは完全に消去され、元に戻すことはできません。\n\n本当に削除しますか？`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      // Delete from Supabase
+      if (!isMock && userId) {
+        const { error } = await supabase
+          .from('user_memberships')
+          .delete()
+          .eq('user_id', userId)
+          .eq('group_id', groupId);
+          
+        if (error) {
+          console.error('Failed to delete membership from server', error);
+          alert('削除中にエラーが発生しました。もう一度お試しください。');
+          return;
+        }
+      }
+      
+      // Delete from local DB
+      if (userId) {
+        await db.userMemberships
+          .where({ userId: userId, groupId: groupId })
+          .delete();
+      }
+      
+      // If the deleted group was active, switch to another group
+      if (activeGroupId === groupId) {
+        const remainingGroups = visibleGroups?.filter(g => g.id !== groupId);
+        if (remainingGroups && remainingGroups.length > 0) {
+          const nextGroupId = remainingGroups[0].id;
+          setActiveGroupId(nextGroupId);
+          if (userId) saveSelectedGroupId(userId, nextGroupId);
+        } else {
+          setActiveGroupId(null);
+        }
+      }
+      
+      alert('グループを削除しました');
+    } catch (err) {
+      console.error('Failed to remove group', err);
+      alert('削除中にエラーが発生しました');
+    }
   };
 
   const activeGroup = visibleGroups?.find(g => g.id === activeGroupId);
@@ -645,22 +696,37 @@ export const UserHome = () => {
             <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                 {/* Only show joined groups */}
                 {visibleGroups?.map(group => (
-                    <button
-                        key={group.id}
-                        onClick={() => handleSelectGroup(group.id)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap
-                            ${activeGroupId === group.id 
-                                ? 'bg-gray-900 text-white shadow-md' 
-                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
-                        {group.name}
-                        {group.deletedAt && (
-                          <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                            削除済み
-                          </span>
+                    <div key={group.id} className="relative flex-shrink-0">
+                        <button
+                            onClick={() => handleSelectGroup(group.id)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition whitespace-nowrap
+                                ${activeGroupId === group.id 
+                                    ? 'bg-gray-900 text-white shadow-md' 
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            {group.name}
+                            {group.deletedAt && (
+                              <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                                削除済み
+                              </span>
+                            )}
+                        </button>
+                        {/* Delete button (only for active groups) */}
+                        {!group.deletedAt && (
+                            <button
+                                onClick={(e) => handleRemoveGroup(group.id, group.name, e)}
+                                className={`absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center shadow-sm transition
+                                    ${activeGroupId === group.id 
+                                        ? 'bg-white text-gray-600 hover:bg-red-50 hover:text-red-600' 
+                                        : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                                    }`}
+                                title="グループを削除"
+                            >
+                                <X size={12} />
+                            </button>
                         )}
-                    </button>
+                    </div>
                 ))}
                 {/* Add Group Button */}
                 <Link to="/user/groups/search" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold bg-gray-100 text-gray-400 border border-dashed border-gray-300 hover:bg-gray-200 transition whitespace-nowrap">
