@@ -58,34 +58,46 @@ export const UserGroupManagement = () => {
     try {
       // Delete from Supabase
       if (!isMock && userId) {
-        console.log('Deleting from Supabase:', { userId, groupId });
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('user_memberships')
           .delete()
           .eq('user_id', userId)
-          .eq('group_id', groupId)
-          .select();
-          
-        console.log('Supabase delete result:', { data, error });
-          
+          .eq('group_id', groupId);
+
         if (error) {
           console.error('Failed to delete membership from server', error);
           alert(`削除中にエラーが発生しました: ${error.message}\n\nもう一度お試しください。`);
           setDeletingGroupId(null);
           return;
         }
-        
-        if (!data || data.length === 0) {
-          console.warn('No rows deleted from Supabase - membership may not exist');
+
+        // Verify deletion on server
+        const { data: verifyData, error: verifyError } = await supabase
+          .from('user_memberships')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('group_id', groupId)
+          .maybeSingle();
+
+        if (verifyError) {
+          console.error('Failed to verify deletion', verifyError);
+          alert('削除後の確認に失敗しました。ネットワーク状況をご確認の上、再度お試しください。');
+          setDeletingGroupId(null);
+          return;
+        }
+
+        if (verifyData) {
+          alert('削除できませんでした。権限設定（RLS）を確認してください。');
+          setDeletingGroupId(null);
+          return;
         }
       }
       
       // Delete from local DB
       if (userId) {
-        const deletedCount = await db.userMemberships
+        await db.userMemberships
           .where({ userId: userId, groupId: groupId })
           .delete();
-        console.log('Deleted from local DB:', deletedCount, 'rows');
       }
       
       // If the deleted group was active, switch to another group or clear selection
