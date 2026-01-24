@@ -31,10 +31,6 @@ export const UserPointTransferApply = () => {
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
   const groups = useLiveQuery(() => db.groups.toArray(), []);
-  const memberships = useLiveQuery(async () => {
-    if (!userId) return [];
-    return await db.userMemberships.where('userId').equals(userId).toArray();
-  }, [userId]);
 
   const activeGroups = groups?.filter(group => !group.deletedAt) ?? [];
 
