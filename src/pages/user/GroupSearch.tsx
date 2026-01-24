@@ -13,6 +13,8 @@ export const GroupSearch = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<IdolGroup[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [defaultGroups, setDefaultGroups] = useState<IdolGroup[]>([]);
+  const [isLoadingDefault, setIsLoadingDefault] = useState(false);
   
   // Scanner State
   const [scanError, setScanError] = useState<string | null>(null);
@@ -50,6 +52,40 @@ export const GroupSearch = () => {
       setIsSearching(false);
     }
   };
+
+  const fetchDefaultGroups = async () => {
+    setIsLoadingDefault(true);
+    try {
+      const { data, error } = await supabase
+        .from('groups')
+        .select('*')
+        .is('deleted_at', null)
+        .order('name', { ascending: true })
+        .limit(100);
+
+      if (error) throw error;
+
+      const mappedData = data?.map(g => ({
+        id: g.id,
+        name: g.name,
+        themeColor: g.theme_color,
+        logoUrl: g.logo_url,
+        deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
+      })) || [];
+
+      setDefaultGroups(mappedData);
+    } catch (err) {
+      console.error('Default group fetch failed', err);
+      alert('グループ一覧の取得に失敗しました');
+    } finally {
+      setIsLoadingDefault(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'search') return;
+    fetchDefaultGroups();
+  }, [activeTab]);
 
   // Initialize Scanner when tab changes
   useEffect(() => {
@@ -150,21 +186,28 @@ export const GroupSearch = () => {
           </div>
 
           <div className="space-y-4">
-             {isSearching && (
+             {(isSearching || isLoadingDefault) && (
                <div className="text-center py-8">
                  <Loader2 className="animate-spin mx-auto text-primary mb-2" />
-                 <p className="text-xs text-gray-400">検索中...</p>
+                 <p className="text-xs text-gray-400">{isSearching ? '検索中...' : '読み込み中...'}</p>
                </div>
              )}
 
-             {!isSearching && searchResults.length === 0 && searchQuery && (
+             {!isSearching && !isLoadingDefault && searchResults.length === 0 && searchQuery && (
                <div className="text-center py-12 opacity-50">
                  <Users size={40} className="mx-auto mb-3 text-gray-300" />
                  <p className="font-bold text-gray-400">見つかりませんでした</p>
                </div>
              )}
 
-             {searchResults.map(group => (
+             {!isSearching && !isLoadingDefault && !searchQuery && defaultGroups.length === 0 && (
+               <div className="text-center py-12 opacity-50">
+                 <Users size={40} className="mx-auto mb-3 text-gray-300" />
+                 <p className="font-bold text-gray-400">グループがありません</p>
+               </div>
+             )}
+
+             {(searchQuery ? searchResults : defaultGroups).map(group => (
                <div key={group.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
                  <div className="flex items-center gap-4">
                    <div 
