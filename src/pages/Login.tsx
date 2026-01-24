@@ -23,6 +23,7 @@ export const Login = () => {
          if (email.includes('admin')) {
             navigate('/admin/dashboard');
          } else {
+            localStorage.setItem('mock_user_session', 'true');
             navigate('/home');
          }
          return;

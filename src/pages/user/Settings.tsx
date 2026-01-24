@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Trash2, Shield, User, Bell, Palette, ChevronRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase, isMock } from '../../lib/supabase';
 import { db } from '../../lib/db';
 
 export const UserSettings = () => {
@@ -8,7 +8,11 @@ export const UserSettings = () => {
 
   const handleLogout = async () => {
     if (window.confirm('ログアウトしますか？')) {
-      await supabase.auth.signOut();
+      if (isMock) {
+        localStorage.removeItem('mock_user_session');
+      } else {
+        await supabase.auth.signOut();
+      }
       navigate('/login');
     }
   };

@@ -32,6 +32,7 @@ import { LiveAttendanceCounts } from './pages/admin/LiveAttendanceCounts';
 import { ManageMembers } from './pages/admin/Members';
 import { DebugAddGroup } from './pages/DebugAddGroup';
 import { ProtectedAdminRoute } from './components/ProtectedAdminRoute';
+import { ProtectedUserRoute } from './components/ProtectedUserRoute';
 import { useSyncGroups } from './hooks/useSyncGroups';
 import { DB_ERROR_EVENT } from './lib/db';
 import { AlertTriangle } from 'lucide-react';
@@ -83,18 +84,18 @@ function App() {
         <Route path="/debug/add-group" element={<DebugAddGroup />} />
         
         {/* User Routes */}
-        <Route path="/user/home" element={<UserHome />} />
-        <Route path="/home" element={<UserHome />} /> {/* Alias for backward compatibility */}
-        <Route path="/user/gifts" element={<GiftExchange />} />
-        <Route path="/user/tickets" element={<UserTickets />} />
-        <Route path="/user/settings" element={<UserSettings />} />
-        <Route path="/user/designs" element={<UserDesigns />} />
-        <Route path="/user/history" element={<UserHistory />} /> {/* Added Route */}
-        <Route path="/user/live-schedule" element={<UserLiveSchedule />} />
-        <Route path="/user/live-attendance" element={<UserLiveAttendance />} />
-        <Route path="/user/trophies" element={<UserTrophies />} />
-        <Route path="/user/groups/search" element={<GroupSearch />} /> {/* New Route */}
-        <Route path="/user/profile" element={<ProfileEdit />} />
+        <Route path="/user/home" element={<ProtectedUserRoute><UserHome /></ProtectedUserRoute>} />
+        <Route path="/home" element={<ProtectedUserRoute><UserHome /></ProtectedUserRoute>} /> {/* Alias for backward compatibility */}
+        <Route path="/user/gifts" element={<ProtectedUserRoute><GiftExchange /></ProtectedUserRoute>} />
+        <Route path="/user/tickets" element={<ProtectedUserRoute><UserTickets /></ProtectedUserRoute>} />
+        <Route path="/user/settings" element={<ProtectedUserRoute><UserSettings /></ProtectedUserRoute>} />
+        <Route path="/user/designs" element={<ProtectedUserRoute><UserDesigns /></ProtectedUserRoute>} />
+        <Route path="/user/history" element={<ProtectedUserRoute><UserHistory /></ProtectedUserRoute>} /> {/* Added Route */}
+        <Route path="/user/live-schedule" element={<ProtectedUserRoute><UserLiveSchedule /></ProtectedUserRoute>} />
+        <Route path="/user/live-attendance" element={<ProtectedUserRoute><UserLiveAttendance /></ProtectedUserRoute>} />
+        <Route path="/user/trophies" element={<ProtectedUserRoute><UserTrophies /></ProtectedUserRoute>} />
+        <Route path="/user/groups/search" element={<ProtectedUserRoute><GroupSearch /></ProtectedUserRoute>} /> {/* New Route */}
+        <Route path="/user/profile" element={<ProtectedUserRoute><ProfileEdit /></ProtectedUserRoute>} />
         
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<ProtectedAdminRoute><AdminDashboard /></ProtectedAdminRoute>} />
