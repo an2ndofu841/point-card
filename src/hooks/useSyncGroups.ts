@@ -35,6 +35,13 @@ export const useSyncGroups = () => {
                 name: g.name,
                 themeColor: g.theme_color || g.themeColor || '#000000',
                 logoUrl: g.logo_url || g.logoUrl,
+                xUrl: g.x_url || g.xUrl,
+                instagramUrl: g.instagram_url || g.instagramUrl,
+                tiktokUrl: g.tiktok_url || g.tiktokUrl,
+                youtubeUrl: g.youtube_url || g.youtubeUrl,
+                itunesUrl: g.itunes_url || g.itunesUrl,
+                spotifyUrl: g.spotify_url || g.spotifyUrl,
+                websiteUrl: g.website_url || g.websiteUrl,
                 deletedAt: g.deleted_at ? new Date(g.deleted_at).getTime() : null
             })));
         }

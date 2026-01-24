@@ -17,7 +17,14 @@ export const GroupManagement = () => {
   const [formData, setFormData] = useState<Partial<IdolGroup>>({
     name: '',
     themeColor: '#2563EB',
-    logoUrl: ''
+    logoUrl: '',
+    xUrl: '',
+    instagramUrl: '',
+    tiktokUrl: '',
+    youtubeUrl: '',
+    itunesUrl: '',
+    spotifyUrl: '',
+    websiteUrl: ''
   });
 
   const [showQR, setShowQR] = useState<number | null>(null); // ID of group to show QR for
@@ -71,7 +78,14 @@ export const GroupManagement = () => {
             await db.groups.update(editingGroupId, {
                 name: formData.name,
                 themeColor: formData.themeColor || '#2563EB',
-                logoUrl: formData.logoUrl
+                logoUrl: formData.logoUrl,
+                xUrl: formData.xUrl,
+                instagramUrl: formData.instagramUrl,
+                tiktokUrl: formData.tiktokUrl,
+                youtubeUrl: formData.youtubeUrl,
+                itunesUrl: formData.itunesUrl,
+                spotifyUrl: formData.spotifyUrl,
+                websiteUrl: formData.websiteUrl
             });
           } else {
             // Local Create Mock
@@ -79,6 +93,13 @@ export const GroupManagement = () => {
                 name: formData.name,
                 themeColor: formData.themeColor || '#2563EB',
                 logoUrl: formData.logoUrl,
+                xUrl: formData.xUrl,
+                instagramUrl: formData.instagramUrl,
+                tiktokUrl: formData.tiktokUrl,
+                youtubeUrl: formData.youtubeUrl,
+                itunesUrl: formData.itunesUrl,
+                spotifyUrl: formData.spotifyUrl,
+                websiteUrl: formData.websiteUrl,
                 deletedAt: null
             } as any);
           }
@@ -90,7 +111,14 @@ export const GroupManagement = () => {
                 .update({
                     name: formData.name,
                     theme_color: formData.themeColor || '#2563EB',
-                    logo_url: formData.logoUrl
+                    logo_url: formData.logoUrl,
+                    x_url: formData.xUrl || null,
+                    instagram_url: formData.instagramUrl || null,
+                    tiktok_url: formData.tiktokUrl || null,
+                    youtube_url: formData.youtubeUrl || null,
+                    itunes_url: formData.itunesUrl || null,
+                    spotify_url: formData.spotifyUrl || null,
+                    website_url: formData.websiteUrl || null
                 })
                 .eq('id', editingGroupId);
             
@@ -100,7 +128,14 @@ export const GroupManagement = () => {
             await db.groups.update(editingGroupId, {
                 name: formData.name,
                 themeColor: formData.themeColor,
-                logoUrl: formData.logoUrl
+                logoUrl: formData.logoUrl,
+                xUrl: formData.xUrl,
+                instagramUrl: formData.instagramUrl,
+                tiktokUrl: formData.tiktokUrl,
+                youtubeUrl: formData.youtubeUrl,
+                itunesUrl: formData.itunesUrl,
+                spotifyUrl: formData.spotifyUrl,
+                websiteUrl: formData.websiteUrl
             });
           } else {
             // 1. Save to Supabase first to get ID
@@ -109,7 +144,14 @@ export const GroupManagement = () => {
                 .insert({
                     name: formData.name,
                     theme_color: formData.themeColor || '#2563EB',
-                    logo_url: formData.logoUrl
+                    logo_url: formData.logoUrl,
+                    x_url: formData.xUrl || null,
+                    instagram_url: formData.instagramUrl || null,
+                    tiktok_url: formData.tiktokUrl || null,
+                    youtube_url: formData.youtubeUrl || null,
+                    itunes_url: formData.itunesUrl || null,
+                    spotify_url: formData.spotifyUrl || null,
+                    website_url: formData.websiteUrl || null
                 })
                 .select()
                 .single();
@@ -122,7 +164,14 @@ export const GroupManagement = () => {
                 id: data.id,
                 name: data.name,
                 themeColor: data.theme_color,
-              logoUrl: data.logo_url,
+                logoUrl: data.logo_url,
+                xUrl: data.x_url,
+                instagramUrl: data.instagram_url,
+                tiktokUrl: data.tiktok_url,
+                youtubeUrl: data.youtube_url,
+                itunesUrl: data.itunes_url,
+                spotifyUrl: data.spotify_url,
+                websiteUrl: data.website_url,
               deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
             });
           }
@@ -130,7 +179,18 @@ export const GroupManagement = () => {
 
       setIsEditing(false);
       setEditingGroupId(null);
-      setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
+      setFormData({ 
+        name: '', 
+        themeColor: '#2563EB', 
+        logoUrl: '',
+        xUrl: '',
+        instagramUrl: '',
+        tiktokUrl: '',
+        youtubeUrl: '',
+        itunesUrl: '',
+        spotifyUrl: '',
+        websiteUrl: ''
+      });
     } catch (err) {
       console.error("Failed to save group", err);
       alert("保存に失敗しました。インターネット接続を確認してください。");
@@ -143,7 +203,14 @@ export const GroupManagement = () => {
     setFormData({
         name: group.name,
         themeColor: group.themeColor,
-        logoUrl: group.logoUrl
+        logoUrl: group.logoUrl,
+        xUrl: group.xUrl,
+        instagramUrl: group.instagramUrl,
+        tiktokUrl: group.tiktokUrl,
+        youtubeUrl: group.youtubeUrl,
+        itunesUrl: group.itunesUrl,
+        spotifyUrl: group.spotifyUrl,
+        websiteUrl: group.websiteUrl
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
@@ -195,7 +262,18 @@ export const GroupManagement = () => {
           <button 
             onClick={() => {
                 setEditingGroupId(null);
-                setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
+                setFormData({ 
+                  name: '', 
+                  themeColor: '#2563EB', 
+                  logoUrl: '',
+                  xUrl: '',
+                  instagramUrl: '',
+                  tiktokUrl: '',
+                  youtubeUrl: '',
+                  itunesUrl: '',
+                  spotifyUrl: '',
+                  websiteUrl: ''
+                });
                 setIsEditing(true);
             }} 
             className="bg-primary hover:bg-primary-dark text-white p-3 rounded-full shadow-lg shadow-blue-500/30 transition active:scale-95"
@@ -265,6 +343,61 @@ export const GroupManagement = () => {
                 </label>
               </div>
             </div>
+
+            <div className="pt-2">
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-2">SNS・リンク</label>
+              <div className="space-y-3">
+                <input
+                  type="url"
+                  value={formData.xUrl || ''}
+                  onChange={e => setFormData({ ...formData, xUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="X (旧Twitter) URL"
+                />
+                <input
+                  type="url"
+                  value={formData.instagramUrl || ''}
+                  onChange={e => setFormData({ ...formData, instagramUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="Instagram URL"
+                />
+                <input
+                  type="url"
+                  value={formData.tiktokUrl || ''}
+                  onChange={e => setFormData({ ...formData, tiktokUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="TikTok URL"
+                />
+                <input
+                  type="url"
+                  value={formData.youtubeUrl || ''}
+                  onChange={e => setFormData({ ...formData, youtubeUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="YouTube URL"
+                />
+                <input
+                  type="url"
+                  value={formData.itunesUrl || ''}
+                  onChange={e => setFormData({ ...formData, itunesUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="iTunes URL"
+                />
+                <input
+                  type="url"
+                  value={formData.spotifyUrl || ''}
+                  onChange={e => setFormData({ ...formData, spotifyUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="Spotify URL"
+                />
+                <input
+                  type="url"
+                  value={formData.websiteUrl || ''}
+                  onChange={e => setFormData({ ...formData, websiteUrl: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 font-bold text-sm focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  placeholder="任意URL"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3 mt-8">
@@ -272,7 +405,18 @@ export const GroupManagement = () => {
               onClick={() => {
                   setIsEditing(false);
                   setEditingGroupId(null);
-                  setFormData({ name: '', themeColor: '#2563EB', logoUrl: '' });
+                  setFormData({ 
+                    name: '', 
+                    themeColor: '#2563EB', 
+                    logoUrl: '',
+                    xUrl: '',
+                    instagramUrl: '',
+                    tiktokUrl: '',
+                    youtubeUrl: '',
+                    itunesUrl: '',
+                    spotifyUrl: '',
+                    websiteUrl: ''
+                  });
               }}
               className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"
             >

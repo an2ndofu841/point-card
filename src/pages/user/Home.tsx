@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Link } from 'react-router-dom';
 import { usePWAInstall } from '../../hooks/usePWAInstall';
-import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal, Bell, Pin } from 'lucide-react';
+import { Download, Star, Trophy, History, Settings, ChevronRight, User, Ticket, Users, Plus, CalendarDays, CalendarCheck, Medal, Bell, Pin, Twitter, Instagram, Youtube, Music2, Music, Link as LinkIcon } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../lib/db';
 import { useCurrentUser } from '../../hooks/useCurrentUser';
@@ -164,6 +164,16 @@ export const UserHome = () => {
   const activeGroupDaysLeft = activeGroupDeletedAt
     ? Math.max(0, Math.ceil((activeGroupDeletedAt + GROUP_RETENTION_MS - Date.now()) / (24 * 60 * 60 * 1000)))
     : null;
+
+  const socialLinks = [
+    { id: 'x', label: 'X', url: activeGroup?.xUrl, icon: Twitter },
+    { id: 'instagram', label: 'Instagram', url: activeGroup?.instagramUrl, icon: Instagram },
+    { id: 'tiktok', label: 'TikTok', url: activeGroup?.tiktokUrl, icon: Music2 },
+    { id: 'youtube', label: 'YouTube', url: activeGroup?.youtubeUrl, icon: Youtube },
+    { id: 'itunes', label: 'iTunes', url: activeGroup?.itunesUrl, icon: Music },
+    { id: 'spotify', label: 'Spotify', url: activeGroup?.spotifyUrl, icon: Music2 },
+    { id: 'website', label: 'URL', url: activeGroup?.websiteUrl, icon: LinkIcon }
+  ].filter(link => !!link.url);
 
   // Sync Groups on Load (Restore from Supabase if local DB is empty after clear)
   useEffect(() => {
@@ -946,6 +956,29 @@ export const UserHome = () => {
                 <ChevronRight className="text-gray-300 group-hover:text-primary transition" size={20} />
             </button>
             </Link>
+
+            {socialLinks.length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1 mb-2">リンク</h3>
+                <div className="flex flex-wrap gap-3">
+                  {socialLinks.map(link => {
+                    const Icon = link.icon;
+                    return (
+                      <a
+                        key={link.id}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 bg-white px-3 py-2 rounded-full border border-gray-100 text-gray-600 text-xs font-bold hover:bg-gray-50 hover:text-primary transition"
+                      >
+                        <Icon size={14} />
+                        {link.label}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {isInstallable && (
             <button 

@@ -5,6 +5,13 @@ export interface IdolGroup {
   name: string;
   themeColor: string;
   logoUrl?: string; // Add logoUrl to IdolGroup
+  xUrl?: string;
+  instagramUrl?: string;
+  tiktokUrl?: string;
+  youtubeUrl?: string;
+  itunesUrl?: string;
+  spotifyUrl?: string;
+  websiteUrl?: string;
   deletedAt?: number | null;
 }
 
