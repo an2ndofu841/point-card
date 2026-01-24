@@ -11,6 +11,7 @@ create table if not exists public.live_events (
   end_at timestamptz,
   location text,
   description text,
+  attendance_points integer default 1,
   is_cancelled boolean default false,
   created_at timestamptz not null default timezone('utc'::text, now()),
   updated_at timestamptz not null default timezone('utc'::text, now())
@@ -23,6 +24,9 @@ create policy "Allow authenticated for live_events"
 on public.live_events for all
 using ((select auth.role()) = 'authenticated')
 with check ((select auth.role()) = 'authenticated');
+
+alter table public.live_events
+  add column if not exists attendance_points integer default 1;
 
 
 -- ==========================================

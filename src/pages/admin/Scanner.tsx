@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Link } from 'react-router-dom';
 import { db } from '../../lib/db';
@@ -11,11 +11,16 @@ type LiveEvent = {
   title: string;
   start_at: string;
   is_cancelled?: boolean;
+  attendance_points?: number | null;
 };
 
-type EventScanStatus = {
-  status: 'NOT_REGISTERED' | 'APPLY' | 'CHECKED_IN' | 'CANCELLED' | 'ERROR';
-  message?: string;
+type AttendanceInfo = {
+  event: LiveEvent | null;
+  registrationStatus: 'NOT_REGISTERED' | 'APPLY' | 'CHECKED_IN' | 'CANCELLED' | 'ERROR';
+  alreadyGranted: boolean;
+  attendancePoints: number;
+  bonusEligible: boolean;
+  checkError?: string;
 };
 
 export const Scanner = () => {
@@ -24,10 +29,9 @@ export const Scanner = () => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const isScanningRef = useRef(false);
-  const [scanMode, setScanMode] = useState<'points' | 'event'>('points');
   const [events, setEvents] = useState<LiveEvent[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
-  const [eventStatus, setEventStatus] = useState<EventScanStatus | null>(null);
+  const [attendanceInfo, setAttendanceInfo] = useState<AttendanceInfo | null>(null);
   const [isCheckingEvent, setIsCheckingEvent] = useState(false);
   const [pendingPoints, setPendingPoints] = useState(0);
 
@@ -44,6 +48,21 @@ export const Scanner = () => {
   const designs = useLiveQuery(() => 
     db.cardDesigns.where('groupId').equals(groupId).toArray()
   , [groupId]);
+
+  const isSameLocalDate = (dateA: Date, dateB: Date) =>
+    dateA.getFullYear() === dateB.getFullYear()
+    && dateA.getMonth() === dateB.getMonth()
+    && dateA.getDate() === dateB.getDate();
+
+  const todayEvents = useMemo(() => {
+    const today = new Date();
+    return events.filter(event => isSameLocalDate(new Date(event.start_at), today));
+  }, [events]);
+
+  const selectedEvent = useMemo(
+    () => todayEvents.find(event => event.id === selectedEventId) || null,
+    [todayEvents, selectedEventId]
+  );
 
   useEffect(() => {
     // Initialize scanner
@@ -123,7 +142,7 @@ export const Scanner = () => {
 
       const { data, error } = await supabase
         .from('live_events')
-        .select('id, title, start_at, is_cancelled')
+        .select('id, title, start_at, is_cancelled, attendance_points')
         .eq('group_id', groupId)
         .order('start_at', { ascending: true });
 
@@ -141,6 +160,16 @@ export const Scanner = () => {
 
     loadEvents();
   }, [groupId]);
+
+  useEffect(() => {
+    if (todayEvents.length === 0) {
+      if (selectedEventId !== null) setSelectedEventId(null);
+      return;
+    }
+    if (!selectedEventId || !todayEvents.some(event => event.id === selectedEventId)) {
+      setSelectedEventId(todayEvents[0].id);
+    }
+  }, [todayEvents, selectedEventId]);
 
   const handleScan = (text: string) => {
     try {
@@ -226,66 +255,170 @@ export const Scanner = () => {
     setScanResult(null);
     setError(null);
     setSuccessMsg(null);
-    setEventStatus(null);
+    setAttendanceInfo(null);
     if (scannerRef.current) {
       scannerRef.current.resume();
     }
   };
 
   useEffect(() => {
-    const checkEventRegistration = async () => {
-      if (scanMode !== 'event' || !scanResult?.id) {
-        setEventStatus(null);
+    const checkAttendance = async () => {
+      if (!scanResult?.id) {
+        setAttendanceInfo(null);
         return;
       }
 
-      if (!selectedEventId) {
-        setEventStatus({ status: 'ERROR', message: 'ライブを選択してください' });
+      if (!selectedEvent) {
+        setAttendanceInfo({
+          event: null,
+          registrationStatus: 'ERROR',
+          alreadyGranted: false,
+          attendancePoints: 0,
+          bonusEligible: false,
+          checkError: '本日のライブが選択されていません'
+        });
+        return;
+      }
+
+      if (selectedEvent.is_cancelled) {
+        setAttendanceInfo({
+          event: selectedEvent,
+          registrationStatus: 'CANCELLED',
+          alreadyGranted: false,
+          attendancePoints: selectedEvent.attendance_points ?? 1,
+          bonusEligible: false,
+          checkError: 'このライブは中止になっています'
+        });
         return;
       }
 
       if (isMock) {
-        setEventStatus({ status: 'NOT_REGISTERED' });
+        setAttendanceInfo({
+          event: selectedEvent,
+          registrationStatus: 'NOT_REGISTERED',
+          alreadyGranted: false,
+          attendancePoints: selectedEvent.attendance_points ?? 1,
+          bonusEligible: false
+        });
         return;
       }
 
       setIsCheckingEvent(true);
-      const { data, error } = await supabase
-        .from('live_event_registrations')
-        .select('*')
-        .eq('event_id', selectedEventId)
-        .eq('user_id', scanResult.id);
+      const [localAttend, registrationRes, historyRes] = await Promise.all([
+        db.pendingScans.filter(s =>
+          s.type === 'ATTEND' &&
+          s.userId === scanResult.id &&
+          s.groupId === groupId &&
+          s.eventId === selectedEvent.id
+        ).first(),
+        supabase
+          .from('live_event_registrations')
+          .select('status')
+          .eq('event_id', selectedEvent.id)
+          .eq('user_id', scanResult.id)
+          .maybeSingle(),
+        supabase
+          .from('point_history')
+          .select('id')
+          .eq('user_id', scanResult.id)
+          .eq('group_id', groupId)
+          .eq('type', 'ATTEND')
+          .eq('metadata->>eventId', String(selectedEvent.id))
+          .limit(1)
+      ]);
 
       setIsCheckingEvent(false);
 
-      if (error) {
-        console.error('Failed to check registration', error);
-        setEventStatus({ status: 'ERROR', message: '参加状況の取得に失敗しました' });
-        return;
+      if (registrationRes.error) {
+        console.error('Failed to check registration', registrationRes.error);
+      }
+      if (historyRes.error) {
+        console.error('Failed to check attendance history', historyRes.error);
       }
 
-      const registration = data && data.length > 0 ? data[0] : null;
-      if (!registration) {
-        setEventStatus({ status: 'NOT_REGISTERED' });
-        return;
-      }
+      const registrationStatus = registrationRes.error
+        ? 'ERROR'
+        : registrationRes.data?.status ?? 'NOT_REGISTERED';
+      const alreadyGranted = !!localAttend || ((historyRes.data || []).length > 0);
+      const bonusEligible = registrationStatus === 'APPLY' || registrationStatus === 'CHECKED_IN';
+      const checkError = historyRes.error ? '来場ポイントの重複判定に失敗しました' : undefined;
 
-      setEventStatus({ status: registration.status });
+      setAttendanceInfo({
+        event: selectedEvent,
+        registrationStatus,
+        alreadyGranted,
+        attendancePoints: selectedEvent.attendance_points ?? 1,
+        bonusEligible,
+        checkError
+      });
     };
 
-    checkEventRegistration();
-  }, [scanMode, scanResult, selectedEventId]);
+    checkAttendance();
+  }, [scanResult?.id, selectedEvent, groupId]);
 
   useEffect(() => {
-    if (scanMode === 'points') {
-      setPendingPoints(0);
-    }
-  }, [scanResult?.id, scanMode]);
+    setPendingPoints(0);
+  }, [scanResult?.id]);
 
   const grantPoints = async (points: number) => {
     if (!scanResult) return;
     
     try {
+      let attendanceGrantedPoints = 0;
+      let attendancePoints = 0;
+      let bonusPoints = 0;
+      let attendanceNote: string | null = null;
+
+      if (attendanceInfo?.event) {
+        attendancePoints = attendanceInfo.attendancePoints;
+
+        if (attendanceInfo.checkError) {
+          attendanceNote = attendanceInfo.checkError;
+        } else if (attendanceInfo.alreadyGranted) {
+          attendanceNote = '来場ポイントは付与済みです';
+        } else if (attendanceInfo.event.is_cancelled) {
+          attendanceNote = '中止ライブのため来場ポイントは付与しません';
+        } else {
+          let registrationStatus = attendanceInfo.registrationStatus;
+          if (!isMock && registrationStatus === 'APPLY') {
+            const { error } = await supabase
+              .from('live_event_registrations')
+              .update({
+                status: 'CHECKED_IN',
+                checked_in_at: new Date().toISOString()
+              })
+              .eq('event_id', attendanceInfo.event.id)
+              .eq('user_id', scanResult.id);
+
+            if (error) {
+              console.error('Failed to update check-in', error);
+              attendanceNote = '来場確認の更新に失敗しました';
+            } else {
+              registrationStatus = 'CHECKED_IN';
+            }
+          }
+
+          if (!attendanceNote) {
+            bonusPoints = attendanceInfo.bonusEligible && (registrationStatus === 'CHECKED_IN' || registrationStatus === 'APPLY') ? 1 : 0;
+            attendanceGrantedPoints = attendancePoints + bonusPoints;
+
+            if (attendanceGrantedPoints > 0) {
+              await db.pendingScans.add({
+                userId: scanResult.id,
+                groupId: groupId,
+                points: attendanceGrantedPoints,
+                type: 'ATTEND',
+                eventId: attendanceInfo.event.id,
+                attendancePoints,
+                bonusPoints,
+                timestamp: Date.now(),
+                synced: false
+              });
+            }
+          }
+        }
+      }
+
       // Add to pending sync
       await db.pendingScans.add({
         userId: scanResult.id,
@@ -299,11 +432,12 @@ export const Scanner = () => {
       // Update local cache for simulation (Scoped to Group)
       // Find existing membership or create one
       const membership = await db.userMemberships.where({ userId: scanResult.id, groupId }).first();
+      const totalPointsToAdd = points + attendanceGrantedPoints;
       
       if (membership) {
         await db.userMemberships.update(membership.id!, {
-            points: membership.points + points,
-            totalPoints: membership.totalPoints + points,
+            points: membership.points + totalPointsToAdd,
+            totalPoints: membership.totalPoints + totalPointsToAdd,
             lastUpdated: Date.now()
         });
       } else {
@@ -311,14 +445,23 @@ export const Scanner = () => {
           await db.userMemberships.add({
               userId: scanResult.id,
               groupId: groupId,
-              points: points,
-              totalPoints: points,
+              points: totalPointsToAdd,
+              totalPoints: totalPointsToAdd,
               currentRank: 'REGULAR',
               lastUpdated: Date.now()
           });
       }
       
-      setSuccessMsg(`${scanResult.id} に ${points}pt 付与しました`);
+      let message = `${scanResult.id} に ${points}pt 付与しました`;
+      if (attendanceGrantedPoints > 0) {
+        const details = bonusPoints > 0
+          ? `来場 +${attendancePoints}pt / 参加 +${bonusPoints}pt`
+          : `来場 +${attendancePoints}pt`;
+        message += `（${details}）`;
+      } else if (attendanceNote) {
+        message += `（${attendanceNote}）`;
+      }
+      setSuccessMsg(message);
       if (navigator.vibrate) navigator.vibrate(200);
       
     } catch (err) {
@@ -407,38 +550,6 @@ export const Scanner = () => {
     }
   };
 
-  const checkInEvent = async () => {
-    if (!scanResult?.id || !selectedEventId) return;
-    if (eventStatus?.status !== 'APPLY') {
-      setError('参加登録がないため、来場確認できません');
-      return;
-    }
-
-    try {
-      if (isMock) {
-        setSuccessMsg('来場確認を完了しました');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('live_event_registrations')
-        .update({
-          status: 'CHECKED_IN',
-          checked_in_at: new Date().toISOString()
-        })
-        .eq('event_id', selectedEventId)
-        .eq('user_id', scanResult.id);
-
-      if (error) throw error;
-
-      setEventStatus({ status: 'CHECKED_IN' });
-      setSuccessMsg('来場確認を完了しました');
-    } catch (err) {
-      console.error(err);
-      setError('来場確認に失敗しました');
-    }
-  };
-
   return (
     <div className="min-h-[100dvh] bg-black text-white flex flex-col font-sans">
       <header className="p-4 flex items-center justify-between bg-black/50 backdrop-blur-md absolute top-0 left-0 right-0 z-30">
@@ -466,42 +577,28 @@ export const Scanner = () => {
             object-fit: cover !important;
           }
         `}</style>
-        {/* Mode Toggle */}
+        {/* Event Selector */}
         <div className="absolute top-16 left-0 right-0 z-20 px-4">
-          <div className="bg-black/50 backdrop-blur-md rounded-full p-1 flex gap-2 text-sm font-bold">
-            <button
-              onClick={() => setScanMode('points')}
-              className={`flex-1 py-2 rounded-full transition ${scanMode === 'points' ? 'bg-white text-gray-900' : 'text-white/70 hover:text-white'}`}
-            >
-              ポイント
-            </button>
-            <button
-              onClick={() => setScanMode('event')}
-              className={`flex-1 py-2 rounded-full transition ${scanMode === 'event' ? 'bg-white text-gray-900' : 'text-white/70 hover:text-white'}`}
-            >
-              ライブ
-            </button>
-          </div>
-
-          {scanMode === 'event' && (
-            <div className="mt-3 bg-black/50 backdrop-blur-md rounded-2xl px-4 py-3">
-              <div className="text-xs text-white/70 font-bold mb-2 flex items-center gap-2">
-                <CalendarDays size={14} /> 対象ライブ
-              </div>
+          <div className="bg-black/50 backdrop-blur-md rounded-2xl px-4 py-3">
+            <div className="text-xs text-white/70 font-bold mb-2 flex items-center gap-2">
+              <CalendarDays size={14} /> 本日のライブ
+            </div>
+            {todayEvents.length === 0 ? (
+              <div className="text-xs text-white/60 font-bold">本日のライブが登録されていません</div>
+            ) : (
               <select
                 value={selectedEventId ?? ''}
                 onChange={(e) => setSelectedEventId(e.target.value ? parseInt(e.target.value) : null)}
                 className="w-full bg-white/10 text-white font-bold text-sm py-2 px-3 rounded-xl focus:outline-none"
               >
-                <option value="">ライブを選択</option>
-                {events.map(event => (
+                {todayEvents.map(event => (
                   <option key={event.id} value={event.id}>
                     {event.is_cancelled ? '【中止】' : ''}{event.title} ({new Date(event.start_at).toLocaleDateString('ja-JP')})
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Camera View */}
@@ -574,41 +671,8 @@ export const Scanner = () => {
                     {scanResult.userName && <p className="text-xs font-mono text-gray-400 mt-1">{scanResult.id}</p>}
                   </div>
                   
-                  {/* Action: Event Check-in */}
-                  {scanMode === 'event' ? (
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ライブ参加確認</p>
-                      <div className="bg-blue-50 p-4 rounded-xl mb-4">
-                        <CalendarDays size={32} className="text-blue-600 mx-auto mb-2" />
-                        {eventStatus?.status === 'ERROR' && (
-                          <p className="text-xs text-red-500 font-bold">{eventStatus.message}</p>
-                        )}
-                        {isCheckingEvent && (
-                          <p className="text-xs text-gray-500 font-bold">参加状況を確認中...</p>
-                        )}
-                        {!isCheckingEvent && eventStatus?.status === 'NOT_REGISTERED' && (
-                          <p className="text-xs text-gray-500 font-bold">参加登録がありません</p>
-                        )}
-                        {!isCheckingEvent && eventStatus?.status === 'APPLY' && (
-                          <p className="text-xs text-blue-600 font-bold">参加予定</p>
-                        )}
-                        {!isCheckingEvent && eventStatus?.status === 'CHECKED_IN' && (
-                          <p className="text-xs text-green-600 font-bold">来場済み</p>
-                        )}
-                        {!isCheckingEvent && eventStatus?.status === 'CANCELLED' && (
-                          <p className="text-xs text-gray-400 font-bold">参加取消</p>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={checkInEvent}
-                        disabled={eventStatus?.status !== 'APPLY'}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg transition disabled:opacity-60 disabled:cursor-not-allowed"
-                      >
-                        来場確認する
-                      </button>
-                    </div>
-                  ) : scanResult.action === 'USE_TICKET' ? (
+                  {/* Action: Ticket Use */}
+                  {scanResult.action === 'USE_TICKET' ? (
                      <div className="text-center">
                         <div className="bg-green-50 p-4 rounded-xl mb-4">
                           <Ticket size={32} className="text-green-600 mx-auto mb-2" />
@@ -626,6 +690,53 @@ export const Scanner = () => {
                     <>
                       {/* Action: Grant Points */}
                       <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">ポイント付与 ({group?.name})</p>
+                      <div className="bg-blue-50 p-4 rounded-xl mb-4">
+                        <div className="flex items-center gap-2 mb-2 text-blue-700 font-bold text-xs">
+                          <CalendarDays size={14} /> 来場ポイント
+                        </div>
+                        {todayEvents.length === 0 && (
+                          <p className="text-xs text-gray-500 font-bold">本日のライブが登録されていません</p>
+                        )}
+                        {todayEvents.length > 0 && !selectedEvent && (
+                          <p className="text-xs text-gray-500 font-bold">ライブを選択してください</p>
+                        )}
+                        {selectedEvent && (
+                          <>
+                            <p className="text-xs font-bold text-blue-800 mb-1">
+                              {selectedEvent.is_cancelled ? '【中止】' : ''}{selectedEvent.title}
+                            </p>
+                            {isCheckingEvent && (
+                              <p className="text-xs text-gray-500 font-bold">参加状況を確認中...</p>
+                            )}
+                            {!isCheckingEvent && attendanceInfo?.checkError && (
+                              <p className="text-xs text-red-500 font-bold">{attendanceInfo.checkError}</p>
+                            )}
+                            {!isCheckingEvent && attendanceInfo && !attendanceInfo.checkError && (
+                              <div className="text-xs font-bold text-gray-600 space-y-1">
+                                <div>
+                                  参加状況:
+                                  {attendanceInfo.registrationStatus === 'APPLY' && <span className="text-blue-600"> 参加予定</span>}
+                                  {attendanceInfo.registrationStatus === 'CHECKED_IN' && <span className="text-green-600"> 来場済み</span>}
+                                  {attendanceInfo.registrationStatus === 'NOT_REGISTERED' && <span> 未登録</span>}
+                                  {attendanceInfo.registrationStatus === 'CANCELLED' && <span> 取消</span>}
+                                  {attendanceInfo.registrationStatus === 'ERROR' && <span className="text-red-500"> 取得失敗</span>}
+                                </div>
+                                <div>
+                                  来場ポイント:
+                                  {attendanceInfo.alreadyGranted ? (
+                                    <span className="text-gray-500"> 付与済み</span>
+                                  ) : (
+                                    <span className="text-blue-600"> +{attendanceInfo.attendancePoints}pt</span>
+                                  )}
+                                </div>
+                                {attendanceInfo.bonusEligible && (
+                                  <div className="text-emerald-600">参加ボーナス: +1pt</div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                       <div className="grid grid-cols-3 gap-3 mb-4">
                         <button 
                           onClick={() => setPendingPoints(prev => prev + 1)}

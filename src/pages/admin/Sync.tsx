@@ -38,7 +38,7 @@ export const Sync = () => {
       const warnings: string[] = [];
       const ticketUseLogs = pendingScans.filter(s => s.type === 'USE_TICKET' && s.ticketId);
       const pointLogs = pendingScans.filter(s => 
-        s.type === 'GRANT' || (s.type === 'USE_TICKET' && !s.ticketId)
+        s.type === 'GRANT' || s.type === 'ATTEND' || (s.type === 'USE_TICKET' && !s.ticketId)
       );
       const designLogs = pendingScans.filter(s => s.type === 'GRANT_DESIGN');
       const idsToDelete: number[] = [];
@@ -74,7 +74,12 @@ export const Sync = () => {
           points: s.points, // s.points can be negative for usage
           type: s.type,
           created_at: new Date(s.timestamp).toISOString(),
-          metadata: { ticketId: s.ticketId }
+          metadata: {
+            ticketId: s.ticketId,
+            eventId: s.eventId,
+            attendancePoints: s.attendancePoints,
+            bonusPoints: s.bonusPoints
+          }
         }));
         
         // Insert history

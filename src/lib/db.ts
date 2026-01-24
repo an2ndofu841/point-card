@@ -36,9 +36,12 @@ export interface PendingScan {
   userId: string;
   groupId: number; // Added groupId
   points: number;
-  type: 'GRANT' | 'USE_TICKET' | 'GRANT_DESIGN';
+  type: 'GRANT' | 'USE_TICKET' | 'GRANT_DESIGN' | 'ATTEND';
   ticketId?: string; 
   designId?: number; 
+  eventId?: number;
+  attendancePoints?: number;
+  bonusPoints?: number;
   timestamp: number;
   synced: boolean;
 }

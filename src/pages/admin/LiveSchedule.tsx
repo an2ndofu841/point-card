@@ -13,6 +13,7 @@ type LiveEvent = {
   end_at?: string | null;
   location?: string | null;
   description?: string | null;
+  attendance_points?: number | null;
   is_cancelled?: boolean;
 };
 
@@ -64,6 +65,7 @@ export const AdminLiveSchedule = () => {
     endAt: '',
     location: '',
     description: '',
+    attendancePoints: 1,
     isCancelled: false
   });
 
@@ -79,6 +81,7 @@ export const AdminLiveSchedule = () => {
       endAt: '',
       location: '',
       description: '',
+      attendancePoints: 1,
       isCancelled: false
     });
   };
@@ -149,6 +152,7 @@ export const AdminLiveSchedule = () => {
         endAt: toLocalInput(event.end_at),
         location: event.location || '',
         description: event.description || '',
+        attendancePoints: event.attendance_points ?? 1,
         isCancelled: !!event.is_cancelled
       });
     } else {
@@ -178,6 +182,7 @@ export const AdminLiveSchedule = () => {
         end_at: formData.endAt ? new Date(formData.endAt).toISOString() : null,
         location: formData.location || null,
         description: formData.description || null,
+        attendance_points: Number.isFinite(formData.attendancePoints) ? formData.attendancePoints : 1,
         is_cancelled: formData.isCancelled,
         updated_at: new Date().toISOString()
       };
@@ -306,6 +311,19 @@ export const AdminLiveSchedule = () => {
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 min-h-[120px] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
                 placeholder="セットリストや注意事項など"
               />
+            </div>
+
+            <div>
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-1">来場ポイント</label>
+              <input
+                type="number"
+                min={0}
+                value={formData.attendancePoints}
+                onChange={e => setFormData({ ...formData, attendancePoints: Number(e.target.value) })}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 font-bold text-lg focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="例: 1"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">来場時に自動付与するポイント</p>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
