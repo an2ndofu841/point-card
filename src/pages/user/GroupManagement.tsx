@@ -59,25 +59,34 @@ export const UserGroupManagement = () => {
     try {
       // Delete from Supabase
       if (!isMock && userId) {
-        const { error } = await supabase
+        console.log('Deleting from Supabase:', { userId, groupId });
+        const { data, error } = await supabase
           .from('user_memberships')
           .delete()
           .eq('user_id', userId)
-          .eq('group_id', groupId);
+          .eq('group_id', groupId)
+          .select();
+          
+        console.log('Supabase delete result:', { data, error });
           
         if (error) {
           console.error('Failed to delete membership from server', error);
-          alert('削除中にエラーが発生しました。もう一度お試しください。');
+          alert(`削除中にエラーが発生しました: ${error.message}\n\nもう一度お試しください。`);
           setDeletingGroupId(null);
           return;
+        }
+        
+        if (!data || data.length === 0) {
+          console.warn('No rows deleted from Supabase - membership may not exist');
         }
       }
       
       // Delete from local DB
       if (userId) {
-        await db.userMemberships
+        const deletedCount = await db.userMemberships
           .where({ userId: userId, groupId: groupId })
           .delete();
+        console.log('Deleted from local DB:', deletedCount, 'rows');
       }
       
       // If the deleted group was active, switch to another group or clear selection
@@ -92,17 +101,11 @@ export const UserGroupManagement = () => {
         }
       }
       
-      alert('グループを削除しました');
-      
-      // Check if there are any groups left
-      const remainingGroups = visibleGroups?.filter(g => g.id !== groupId);
-      if (!remainingGroups || remainingGroups.length === 0) {
-        navigate('/home');
-      }
+      // Reload the page to ensure clean state
+      window.location.href = '/home';
     } catch (err) {
       console.error('Failed to remove group', err);
-      alert('削除中にエラーが発生しました');
-    } finally {
+      alert(`削除中にエラーが発生しました: ${err instanceof Error ? err.message : String(err)}`);
       setDeletingGroupId(null);
     }
   };
