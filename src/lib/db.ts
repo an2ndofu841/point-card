@@ -98,6 +98,36 @@ export interface UserDesign {
   acquiredAt: number;
 }
 
+export interface TransferRule {
+  id?: number;
+  targetGroupId: number;
+  sourceGroupId: number;
+  mode: 'FULL' | 'CAP';
+  capPoints?: number | null;
+  active: boolean;
+}
+
+export interface TransferCode {
+  id?: number;
+  code: string;
+  userId: string;
+  sourceGroupId: number;
+  createdAt: number;
+  usedAt?: number | null;
+  usedByUserId?: string | null;
+  usedTargetGroupId?: number | null;
+}
+
+export interface TransferLog {
+  id?: number;
+  fromGroupId: number;
+  toGroupId: number;
+  fromUserId: string;
+  toUserId: string;
+  pointsTransferred: number;
+  createdAt: number;
+}
+
 // Use a new database name to force fresh start if v1 is corrupted
 const db = new Dexie('CFPointCardDB_v2') as Dexie & {
   pendingScans: EntityTable<PendingScan, 'id'>;
@@ -109,6 +139,9 @@ const db = new Dexie('CFPointCardDB_v2') as Dexie & {
   userDesigns: EntityTable<UserDesign, 'id'>;
   groups: EntityTable<IdolGroup, 'id'>;
   userMemberships: EntityTable<UserMembership, 'id'>;
+  transferRules: EntityTable<TransferRule, 'id'>;
+  transferCodes: EntityTable<TransferCode, 'id'>;
+  transferLogs: EntityTable<TransferLog, 'id'>;
 };
 
 db.version(1).stores({
@@ -197,6 +230,13 @@ db.version(8).stores({
   await tx.table('cardDesigns').toCollection().modify(d => d.groupId = defaultGroupId);
   await tx.table('userDesigns').toCollection().modify(d => d.groupId = defaultGroupId);
   await tx.table('pendingScans').toCollection().modify(s => s.groupId = defaultGroupId);
+});
+
+// Version 9: Transfer system
+db.version(9).stores({
+  transferRules: '++id, targetGroupId, sourceGroupId, active',
+  transferCodes: '++id, code, userId, sourceGroupId, createdAt, usedAt',
+  transferLogs: '++id, fromGroupId, toGroupId, fromUserId, createdAt'
 });
 
 // Export event name

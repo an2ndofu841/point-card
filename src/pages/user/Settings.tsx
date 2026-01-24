@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Trash2, Shield, User, Bell, Palette, ChevronRight, Users } from 'lucide-react';
+import { ArrowLeft, LogOut, Trash2, Shield, User, Bell, Palette, ChevronRight, Users, Repeat } from 'lucide-react';
 import { supabase, isMock } from '../../lib/supabase';
 import { db } from '../../lib/db';
 
@@ -43,6 +43,14 @@ export const UserSettings = () => {
                <div className="flex items-center gap-3">
                  <Users size={20} className="text-purple-600" />
                  <span className="font-bold text-sm">グループ管理</span>
+               </div>
+               <ChevronRight size={18} className="text-gray-300" />
+            </Link>
+
+            <Link to="/user/transfer" className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition border-b border-gray-50 text-left">
+               <div className="flex items-center gap-3">
+                 <Repeat size={20} className="text-blue-600" />
+                 <span className="font-bold text-sm">ポイント引き継ぎ</span>
                </div>
                <ChevronRight size={18} className="text-gray-300" />
             </Link>
