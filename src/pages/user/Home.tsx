@@ -13,7 +13,7 @@ import { loadSelectedGroupId, saveSelectedGroupId } from '../../lib/selectedGrou
 export const UserHome = () => {
   const { isInstallable, install } = usePWAInstall();
   const [qrValue, setQrValue] = useState('');
-  const { userId } = useCurrentUser(); // Use real userId
+  const { userId, loading } = useCurrentUser(); // Use real userId
   const [cardTilt, setCardTilt] = useState({ x: 0, y: 0 });
   const [isTilting, setIsTilting] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -71,7 +71,7 @@ export const UserHome = () => {
       syncProfile();
   }, [userId]);
 
-  const userName = userProfile?.name || 'ゲストさん';
+  const userName = loading ? '読み込み中…' : (userProfile?.name || 'ゲストさん');
 
   type LevelConfig = {
     level: number;

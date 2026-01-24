@@ -16,18 +16,19 @@ export const useCurrentUser = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUserId(session.user.id);
-      } else {
-        setUserId(null);
       }
       setLoading(false);
     };
 
     fetchUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUserId(session.user.id);
-      } else {
+        return;
+      }
+
+      if (event === 'SIGNED_OUT') {
         setUserId(null);
       }
     });
