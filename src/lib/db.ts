@@ -13,6 +13,8 @@ export interface IdolGroup {
   spotifyUrl?: string;
   websiteUrl?: string;
   transferEnabled?: boolean;
+  profileCoverUrl?: string;
+  profileDescription?: string;
   deletedAt?: number | null;
 }
 
@@ -99,6 +101,16 @@ export interface UserDesign {
   acquiredAt: number;
 }
 
+export interface GroupMember {
+  id?: number;
+  groupId: number;
+  name: string;
+  role?: string;
+  imageUrl?: string;
+  sortOrder: number;
+  createdAt: number;
+}
+
 export interface TransferRule {
   id?: number;
   targetGroupId: number;
@@ -138,6 +150,7 @@ const db = new Dexie('CFPointCardDB_v2') as Dexie & {
   rankConfigs: EntityTable<RankConfig, 'id'>;
   cardDesigns: EntityTable<CardDesign, 'id'>;
   userDesigns: EntityTable<UserDesign, 'id'>;
+  groupMembers: EntityTable<GroupMember, 'id'>;
   groups: EntityTable<IdolGroup, 'id'>;
   userMemberships: EntityTable<UserMembership, 'id'>;
   transferRules: EntityTable<TransferRule, 'id'>;
@@ -238,6 +251,11 @@ db.version(9).stores({
   transferRules: '++id, targetGroupId, sourceGroupId, active',
   transferCodes: '++id, code, userId, sourceGroupId, createdAt, usedAt',
   transferLogs: '++id, fromGroupId, toGroupId, fromUserId, createdAt'
+});
+
+// Version 10: Group profile
+db.version(10).stores({
+  groupMembers: '++id, groupId, sortOrder'
 });
 
 // Export event name

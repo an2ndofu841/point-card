@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, type IdolGroup } from '../../lib/db';
+import { db, type IdolGroup, type GroupMember } from '../../lib/db';
 import { supabase, isMock } from '../../lib/supabase';
 import { ArrowLeft, Plus, Users, QrCode, Copy, Trash2, Save, Loader2, Camera, Edit, ToggleLeft, ToggleRight } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -25,10 +25,16 @@ export const GroupManagement = () => {
     itunesUrl: '',
     spotifyUrl: '',
     websiteUrl: '',
-    transferEnabled: false
+    transferEnabled: false,
+    profileCoverUrl: '',
+    profileDescription: ''
   });
 
   const [showQR, setShowQR] = useState<number | null>(null); // ID of group to show QR for
+  const [memberEdits, setMemberEdits] = useState<GroupMember[]>([]);
+  const [memberDeletes, setMemberDeletes] = useState<number[]>([]);
+  const [isSavingMembers, setIsSavingMembers] = useState(false);
+  const [isCoverUploading, setIsCoverUploading] = useState(false);
 
   const [transferRules, setTransferRules] = useState<Array<{
     id: number;
@@ -123,6 +129,172 @@ export const GroupManagement = () => {
     }
   };
 
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setIsCoverUploading(true);
+
+    try {
+      if (isMock) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setFormData({ ...formData, profileCoverUrl: ev.target?.result as string });
+          setIsCoverUploading(false);
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `covers/group-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
+      setFormData({ ...formData, profileCoverUrl: data.publicUrl });
+    } catch (error) {
+      console.error('Error uploading cover:', error);
+      alert('カバー画像のアップロードに失敗しました');
+    } finally {
+      setIsCoverUploading(false);
+    }
+  };
+
+  const loadMembers = async (groupId: number) => {
+    if (isMock) {
+      const localMembers = await db.groupMembers.where('groupId').equals(groupId).sortBy('sortOrder');
+      setMemberEdits(localMembers);
+      setMemberDeletes([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('group_members')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('sort_order', { ascending: true });
+
+    if (error) {
+      console.error('Failed to load members', error);
+      return;
+    }
+
+    const mapped = (data || []).map(item => ({
+      id: item.id,
+      groupId: item.group_id,
+      name: item.name,
+      role: item.role,
+      imageUrl: item.image_url,
+      sortOrder: item.sort_order,
+      createdAt: new Date(item.created_at).getTime()
+    }));
+
+    setMemberEdits(mapped);
+    setMemberDeletes([]);
+  };
+
+  const handleAddMember = () => {
+    if (!editingGroupId) return;
+    const nextOrder = memberEdits.length > 0 ? Math.max(...memberEdits.map(m => m.sortOrder)) + 1 : 0;
+    setMemberEdits(prev => [
+      ...prev,
+      {
+        groupId: editingGroupId,
+        name: '',
+        role: '',
+        imageUrl: '',
+        sortOrder: nextOrder,
+        createdAt: Date.now()
+      }
+    ]);
+  };
+
+  const handleUpdateMember = (index: number, updates: Partial<GroupMember>) => {
+    setMemberEdits(prev => prev.map((member, idx) => idx === index ? { ...member, ...updates } : member));
+  };
+
+  const handleRemoveMember = (index: number) => {
+    setMemberEdits(prev => {
+      const next = [...prev];
+      const removed = next.splice(index, 1)[0];
+      if (removed?.id) {
+        setMemberDeletes(ids => [...ids, removed.id!]);
+      }
+      return next;
+    });
+  };
+
+  const handleMemberImageUpload = async (index: number, file: File) => {
+    if (!file) return;
+    try {
+      if (isMock) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          handleUpdateMember(index, { imageUrl: ev.target?.result as string });
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `members/member-${Date.now()}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from('logos')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('logos').getPublicUrl(fileName);
+      handleUpdateMember(index, { imageUrl: data.publicUrl });
+    } catch (error) {
+      console.error('Error uploading member image:', error);
+      alert('メンバー画像のアップロードに失敗しました');
+    }
+  };
+
+  const handleSaveMembers = async () => {
+    if (!editingGroupId) return;
+    setIsSavingMembers(true);
+    try {
+      const payload = memberEdits.map(member => ({
+        id: member.id,
+        group_id: editingGroupId,
+        name: member.name,
+        role: member.role || null,
+        image_url: member.imageUrl || null,
+        sort_order: member.sortOrder
+      }));
+
+      if (isMock) {
+        for (const id of memberDeletes) {
+          await db.groupMembers.delete(id);
+        }
+        await db.groupMembers.bulkPut(memberEdits.map(member => ({
+          ...member,
+          groupId: editingGroupId
+        })));
+      } else {
+        if (memberDeletes.length > 0) {
+          await supabase.from('group_members').delete().in('id', memberDeletes);
+        }
+        if (payload.length > 0) {
+          const { error } = await supabase.from('group_members').upsert(payload, { onConflict: 'id' });
+          if (error) throw error;
+        }
+      }
+
+      setMemberDeletes([]);
+      alert('メンバー情報を保存しました');
+      await loadMembers(editingGroupId);
+    } catch (err) {
+      console.error('Failed to save members', err);
+      alert('メンバー情報の保存に失敗しました');
+    } finally {
+      setIsSavingMembers(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!formData.name) return;
     setIsSaving(true);
@@ -155,7 +327,9 @@ export const GroupManagement = () => {
                 itunesUrl: resolveUrlForDb(formData.itunesUrl, currentGroup?.itunesUrl),
                 spotifyUrl: resolveUrlForDb(formData.spotifyUrl, currentGroup?.spotifyUrl),
                 websiteUrl: resolveUrlForDb(formData.websiteUrl, currentGroup?.websiteUrl),
-                transferEnabled: !!formData.transferEnabled
+                transferEnabled: !!formData.transferEnabled,
+                profileCoverUrl: formData.profileCoverUrl,
+                profileDescription: formData.profileDescription
             });
           } else {
             // Local Create Mock
@@ -171,6 +345,8 @@ export const GroupManagement = () => {
                 spotifyUrl: normalizeUrl(formData.spotifyUrl),
                 websiteUrl: normalizeUrl(formData.websiteUrl),
                 transferEnabled: !!formData.transferEnabled,
+                profileCoverUrl: formData.profileCoverUrl,
+                profileDescription: formData.profileDescription,
                 deletedAt: null
             } as any);
           }
@@ -190,7 +366,9 @@ export const GroupManagement = () => {
                     itunes_url: resolveUrlForSupabase(formData.itunesUrl, currentGroup?.itunesUrl),
                     spotify_url: resolveUrlForSupabase(formData.spotifyUrl, currentGroup?.spotifyUrl),
                     website_url: resolveUrlForSupabase(formData.websiteUrl, currentGroup?.websiteUrl),
-                    transfer_enabled: !!formData.transferEnabled
+                    transfer_enabled: !!formData.transferEnabled,
+                    profile_cover_url: formData.profileCoverUrl || null,
+                    profile_description: formData.profileDescription || null
                 })
                 .eq('id', editingGroupId);
             
@@ -225,7 +403,9 @@ export const GroupManagement = () => {
                     itunes_url: normalizeUrl(formData.itunesUrl) ?? null,
                     spotify_url: normalizeUrl(formData.spotifyUrl) ?? null,
                     website_url: normalizeUrl(formData.websiteUrl) ?? null,
-                    transfer_enabled: !!formData.transferEnabled
+                    transfer_enabled: !!formData.transferEnabled,
+                    profile_cover_url: formData.profileCoverUrl || null,
+                    profile_description: formData.profileDescription || null
                 })
                 .select()
                 .single();
@@ -247,6 +427,8 @@ export const GroupManagement = () => {
                 spotifyUrl: data.spotify_url,
                 websiteUrl: data.website_url,
                 transferEnabled: data.transfer_enabled ?? false,
+                profileCoverUrl: data.profile_cover_url,
+                profileDescription: data.profile_description,
               deletedAt: data.deleted_at ? new Date(data.deleted_at).getTime() : null
             });
           }
@@ -254,6 +436,8 @@ export const GroupManagement = () => {
 
       setIsEditing(false);
       setEditingGroupId(null);
+      setMemberEdits([]);
+      setMemberDeletes([]);
       setFormData({ 
         name: '', 
         themeColor: '#2563EB', 
@@ -265,7 +449,9 @@ export const GroupManagement = () => {
         itunesUrl: '',
         spotifyUrl: '',
         websiteUrl: '',
-        transferEnabled: false
+        transferEnabled: false,
+        profileCoverUrl: '',
+        profileDescription: ''
       });
     } catch (err) {
       console.error("Failed to save group", err);
@@ -357,12 +543,15 @@ export const GroupManagement = () => {
         itunesUrl: group.itunesUrl,
         spotifyUrl: group.spotifyUrl,
         websiteUrl: group.websiteUrl,
-        transferEnabled: group.transferEnabled ?? false
+        transferEnabled: group.transferEnabled ?? false,
+        profileCoverUrl: group.profileCoverUrl,
+        profileDescription: group.profileDescription
     });
     setEditingGroupId(group.id!);
     setIsEditing(true);
     setRuleForm({ mode: 'FULL', capPoints: '' });
     loadTransferRules(group.id!);
+    loadMembers(group.id!);
   };
 
 
@@ -411,6 +600,8 @@ export const GroupManagement = () => {
           <button 
             onClick={() => {
                 setEditingGroupId(null);
+                setMemberEdits([]);
+                setMemberDeletes([]);
                 setFormData({ 
                   name: '', 
                   themeColor: '#2563EB', 
@@ -422,7 +613,9 @@ export const GroupManagement = () => {
                   itunesUrl: '',
                   spotifyUrl: '',
                   websiteUrl: '',
-                  transferEnabled: false
+                  transferEnabled: false,
+                  profileCoverUrl: '',
+                  profileDescription: ''
                 });
                 setIsEditing(true);
             }} 
@@ -491,6 +684,138 @@ export const GroupManagement = () => {
                     disabled={isUploading}
                   />
                 </label>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-2">プロフィール</label>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 mb-1">カバー画像</label>
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-16 bg-gray-100 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden relative">
+                      {formData.profileCoverUrl ? (
+                        <img src={formData.profileCoverUrl} alt="cover" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-gray-300 text-xs">No Img</span>
+                      )}
+                      {isCoverUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                          <Loader2 className="animate-spin text-white" size={20} />
+                        </div>
+                      )}
+                    </div>
+                    <label className="bg-white border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm font-bold cursor-pointer hover:bg-gray-50 transition flex items-center gap-2">
+                      <Camera size={16} />
+                      画像を選択
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleCoverUpload}
+                        disabled={isCoverUploading}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 mb-1">グループ説明</label>
+                  <textarea
+                    value={formData.profileDescription || ''}
+                    onChange={e => setFormData({ ...formData, profileDescription: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    placeholder="プロフィール説明文を入力"
+                    rows={4}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2">
+              <label className="block text-text-sub text-xs font-bold uppercase tracking-wider mb-2">所属メンバー紹介</label>
+              <div className="space-y-3">
+                {memberEdits.map((member, index) => (
+                  <div key={`${member.id ?? 'new'}-${index}`} className="bg-gray-50 border border-gray-200 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white border border-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
+                        {member.imageUrl ? (
+                          <img src={member.imageUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-gray-300">No Img</span>
+                        )}
+                      </div>
+                      <label className="text-xs font-bold text-gray-500 cursor-pointer">
+                        画像を選択
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleMemberImageUpload(index, file);
+                          }}
+                        />
+                      </label>
+                      <button
+                        onClick={() => handleRemoveMember(index)}
+                        className="ml-auto text-xs font-bold text-red-500 hover:underline"
+                      >
+                        削除
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={member.name}
+                        onChange={(e) => handleUpdateMember(index, { name: e.target.value })}
+                        className="bg-white border border-gray-200 rounded-lg p-2 text-sm font-bold"
+                        placeholder="名前"
+                      />
+                      <input
+                        type="text"
+                        value={member.role || ''}
+                        onChange={(e) => handleUpdateMember(index, { role: e.target.value })}
+                        className="bg-white border border-gray-200 rounded-lg p-2 text-sm font-bold"
+                        placeholder="肩書き"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={member.imageUrl || ''}
+                        onChange={(e) => handleUpdateMember(index, { imageUrl: e.target.value })}
+                        className="bg-white border border-gray-200 rounded-lg p-2 text-xs font-mono"
+                        placeholder="画像URL（任意）"
+                      />
+                      <input
+                        type="number"
+                        value={member.sortOrder}
+                        onChange={(e) => handleUpdateMember(index, { sortOrder: Number(e.target.value) })}
+                        className="bg-white border border-gray-200 rounded-lg p-2 text-sm font-bold"
+                        placeholder="表示順"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleAddMember}
+                    className="flex-1 bg-white border border-gray-200 text-gray-600 py-2 rounded-xl text-sm font-bold hover:bg-gray-50 transition"
+                  >
+                    メンバーを追加
+                  </button>
+                  <button
+                    onClick={handleSaveMembers}
+                    disabled={isSavingMembers}
+                    className="flex-1 bg-primary text-white py-2 rounded-xl text-sm font-bold hover:bg-primary-dark transition disabled:opacity-50"
+                  >
+                    {isSavingMembers ? '保存中...' : 'メンバー保存'}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -646,6 +971,8 @@ export const GroupManagement = () => {
               onClick={() => {
                   setIsEditing(false);
                   setEditingGroupId(null);
+                  setMemberEdits([]);
+                  setMemberDeletes([]);
                   setFormData({ 
                     name: '', 
                     themeColor: '#2563EB', 
@@ -657,7 +984,9 @@ export const GroupManagement = () => {
                     itunesUrl: '',
                     spotifyUrl: '',
                     websiteUrl: '',
-                    transferEnabled: false
+                    transferEnabled: false,
+                    profileCoverUrl: '',
+                    profileDescription: ''
                   });
               }}
               className="flex-1 bg-gray-100 text-gray-500 py-3.5 rounded-xl font-bold hover:bg-gray-200 transition"

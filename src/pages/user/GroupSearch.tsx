@@ -212,7 +212,7 @@ export const GroupSearch = () => {
              {(searchQuery ? searchResults : defaultGroups).map(group => (
                <Link
                  key={group.id}
-                 to={`/join/${group.id}`}
+                 to={`/user/groups/${group.id}/profile`}
                  className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:bg-gray-50 transition"
                >
                  <div className="flex items-center gap-4">

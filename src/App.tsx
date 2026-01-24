@@ -17,6 +17,7 @@ import { UserTrophies } from './pages/user/Trophies';
 import { GroupSearch } from './pages/user/GroupSearch'; // Import GroupSearch
 import { UserGroupManagement } from './pages/user/GroupManagement'; // Import UserGroupManagement
 import { UserPointTransfer } from './pages/user/PointTransfer';
+import { GroupProfile } from './pages/user/GroupProfile';
 import { AdminPointTransferApply } from './pages/admin/PointTransferApply';
 import { ProfileEdit } from './pages/user/ProfileEdit';
 import { JoinGroup } from './pages/JoinGroup';
@@ -100,6 +101,7 @@ function App() {
         <Route path="/user/groups/search" element={<ProtectedUserRoute><GroupSearch /></ProtectedUserRoute>} /> {/* New Route */}
         <Route path="/user/groups/manage" element={<ProtectedUserRoute><UserGroupManagement /></ProtectedUserRoute>} /> {/* Group Management */}
         <Route path="/user/transfer" element={<ProtectedUserRoute><UserPointTransfer /></ProtectedUserRoute>} />
+        <Route path="/user/groups/:groupId/profile" element={<ProtectedUserRoute><GroupProfile /></ProtectedUserRoute>} />
         <Route path="/user/profile" element={<ProtectedUserRoute><ProfileEdit /></ProtectedUserRoute>} />
         
         {/* Admin Routes */}
