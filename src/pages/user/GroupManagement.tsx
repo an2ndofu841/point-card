@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Trash2, AlertTriangle } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
