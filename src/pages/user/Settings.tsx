@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, LogOut, Trash2, Shield, User, Bell, Palette, ChevronRight, Users, Repeat } from 'lucide-react';
+import { ArrowLeft, LogOut, Trash2, Shield, User, Bell, Palette, ChevronRight, Users, Repeat, Link2 } from 'lucide-react';
 import { supabase, isMock } from '../../lib/supabase';
 import { db } from '../../lib/db';
 
@@ -73,6 +73,13 @@ export const UserSettings = () => {
                <div className="flex items-center gap-3">
                  <User size={20} className="text-gray-400" />
                  <span className="font-bold text-sm">プロフィール編集</span>
+               </div>
+               <ChevronRight size={18} className="text-gray-300" />
+            </Link>
+            <Link to="/user/link" className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition border-b border-gray-50 text-left">
+               <div className="flex items-center gap-3">
+                 <Link2 size={20} className="text-blue-500" />
+                 <span className="font-bold text-sm">マイページ連携</span>
                </div>
                <ChevronRight size={18} className="text-gray-300" />
             </Link>
