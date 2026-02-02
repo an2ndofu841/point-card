@@ -74,7 +74,12 @@ serve(async (req) => {
       return jsonResponse(400, { error: "claim_failed", detail: error.message });
     }
 
-    return jsonResponse(200, { success: true, ...data?.[0] });
+    const row = data?.[0] ?? null;
+    return jsonResponse(200, {
+      success: true,
+      group_id: row?.out_group_id ?? null,
+      point_user_id: row?.point_user_id ?? null,
+    });
   }
 
   if (body.action === "fetch") {

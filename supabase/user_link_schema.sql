@@ -97,7 +97,7 @@ $$;
 grant execute on function public.claim_user_link_code(text) to authenticated;
 
 create or replace function public.claim_user_link_code_external(p_code text, p_hp_user_id text)
-returns table (group_id bigint, point_user_id uuid)
+returns table (out_group_id bigint, point_user_id uuid)
 language plpgsql
 security definer
 set search_path = public
@@ -133,7 +133,7 @@ begin
       used_by_external_user_id = p_hp_user_id
   where id = v_code.id;
 
-  return query select v_code.group_id, v_code.point_user_id;
+  return query select v_code.group_id as out_group_id, v_code.point_user_id;
 end;
 $$;
 
