@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
 import { supabase, isMock } from '../lib/supabase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
+import { loadPendingJoinGroupId, clearPendingJoinGroupId } from '../lib/pendingJoin';
 
 export const Register = () => {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const joinGroupId = searchParams.get('joinGroupId') || (loadPendingJoinGroupId()?.toString() ?? null);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,16 +30,28 @@ export const Register = () => {
         // モックモード：実際の通信を行わずに成功とする
         await new Promise(resolve => setTimeout(resolve, 1000)); // 1秒待機して通信っぽく見せる
         console.log("Mock Register Success:", email);
+        localStorage.setItem('mock_user_session', 'true');
+        if (joinGroupId) {
+          clearPendingJoinGroupId();
+          navigate(`/join/${joinGroupId}`);
+          return;
+        }
         setSuccess(true);
         return;
       }
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
 
       if (error) throw error;
+
+      if (data.session?.user && joinGroupId) {
+        clearPendingJoinGroupId();
+        navigate(`/join/${joinGroupId}`);
+        return;
+      }
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || "登録中にエラーが発生しました");
@@ -65,7 +81,7 @@ export const Register = () => {
             </p>
           )}
 
-          <Link to="/login" className="block w-full bg-gray-100 hover:bg-gray-200 text-text-main font-bold py-3.5 rounded-xl transition">
+          <Link to={joinGroupId ? `/login?joinGroupId=${joinGroupId}` : '/login'} className="block w-full bg-gray-100 hover:bg-gray-200 text-text-main font-bold py-3.5 rounded-xl transition">
             ログイン画面へ戻る
           </Link>
         </div>

@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
 import { supabase, isMock } from '../lib/supabase';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { loadPendingJoinGroupId, clearPendingJoinGroupId } from '../lib/pendingJoin';
 
 export const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const joinGroupId = searchParams.get('joinGroupId') || (loadPendingJoinGroupId()?.toString() ?? null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +27,12 @@ export const Login = () => {
             navigate('/admin/dashboard');
          } else {
             localStorage.setItem('mock_user_session', 'true');
-            navigate('/home');
+            if (joinGroupId) {
+              clearPendingJoinGroupId();
+              navigate(`/join/${joinGroupId}`);
+            } else {
+              navigate('/home');
+            }
          }
          return;
       }
@@ -39,7 +47,12 @@ export const Login = () => {
         if (email.includes('admin')) {
            navigate('/admin/dashboard');
         } else {
-           navigate('/home');
+           if (joinGroupId) {
+             clearPendingJoinGroupId();
+             navigate(`/join/${joinGroupId}`);
+           } else {
+             navigate('/home');
+           }
         }
       }
     } catch (err: any) {
@@ -123,7 +136,7 @@ export const Login = () => {
         <div className="mt-8 text-center">
           <p className="text-text-sub text-sm">
             アカウントをお持ちでないですか？{' '}
-            <Link to="/register" className="text-primary hover:text-primary-dark font-bold transition ml-1">
+            <Link to={joinGroupId ? `/register?joinGroupId=${joinGroupId}` : '/register'} className="text-primary hover:text-primary-dark font-bold transition ml-1">
               新規登録
             </Link>
           </p>

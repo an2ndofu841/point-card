@@ -4,12 +4,13 @@ import { db } from '../lib/db';
 import { supabase, isMock } from '../lib/supabase';
 import { useCurrentUser } from '../hooks/useCurrentUser';
 import { generateMemberId } from '../lib/memberId';
+import { savePendingJoinGroupId, clearPendingJoinGroupId } from '../lib/pendingJoin';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 export const JoinGroup = () => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
-  const { userId } = useCurrentUser(); // Use real userId hook
+  const { userId, loading } = useCurrentUser(); // Use real userId hook
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('処理中...');
 
@@ -21,11 +22,17 @@ export const JoinGroup = () => {
         return;
       }
 
+      if (loading) {
+        return;
+      }
+
       if (!userId) {
-        // Wait for userId to be loaded.
-        // If it takes too long, auth state might be loading or not logged in.
-        // But useCurrentUser handles loading state internally initially.
-        return; 
+        const gId = parseInt(groupId);
+        if (!isNaN(gId)) {
+          savePendingJoinGroupId(gId);
+        }
+        navigate(`/register?joinGroupId=${groupId}`);
+        return;
       }
 
       const gId = parseInt(groupId);
@@ -96,6 +103,7 @@ export const JoinGroup = () => {
         const existing = await db.userMemberships.where({ userId, groupId: gId }).first();
         
         if (existing) {
+            clearPendingJoinGroupId();
             setStatus('success');
             setMessage(`${group.name} のカードは既に持っています`);
             setTimeout(() => navigate('/user/home'), 2000);
@@ -138,6 +146,7 @@ export const JoinGroup = () => {
             lastUpdated: Date.now()
         });
 
+        clearPendingJoinGroupId();
         setStatus('success');
         setMessage(`${group.name} のカードを追加しました！`);
         
@@ -152,7 +161,7 @@ export const JoinGroup = () => {
     };
 
     join();
-  }, [groupId, navigate, userId]);
+  }, [groupId, navigate, userId, loading]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-main p-6">
